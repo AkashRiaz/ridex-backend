@@ -1,0 +1,52 @@
+model Report {
+  id String @id @default(uuid())
+
+  reporterId String
+
+  targetType ReportTargetType
+
+  // typed links (exactly one is set, matching targetType)
+  listingId String?
+
+  reportedUserId String?
+
+  reviewId String?
+
+  // chat messages arrive with the chat module
+  messageId String?
+
+  reason ReportReason
+
+  details String?
+
+  status ReportStatus @default(OPEN)
+
+  // e.g. TAKE_DOWN_LISTING, BLOCK_USER, HIDE_REVIEW
+  actionTaken String?
+
+  resolutionNote String?
+
+  resolvedById String?
+
+  resolvedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  reporter User @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  reportedUser User? @relation("ReportsAgainst", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  review Review? @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([targetType])
+  @@index([reporterId])
+  @@index([listingId])
+  @@index([reportedUserId])
+  @@index([reviewId])
+  @@map("reports")
+}

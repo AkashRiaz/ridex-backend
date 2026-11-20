@@ -3,6 +3,7 @@ import httpStatus from "http-status";
 import {
   AuditAction,
   AuthProvider,
+  ListingStatus,
   Role,
   UserStatus,
 } from "../../../generated/prisma/enums";
@@ -10,6 +11,7 @@ import { UserWhereInput } from "../../../generated/prisma/models";
 import { config } from "../../config";
 import { generateRandomPassword } from "../../helper/generateRandomPassword";
 import { queryBuilder } from "../../helper/queryBuilder";
+import { sellerSummarySelect, toSellerSummary } from "../../helper/sellerBadges";
 import { IQuery } from "../../interfaces";
 import { prisma } from "../../lib/prisma";
 import { RequestUser } from "../../middleware/checkAuth";
@@ -21,6 +23,7 @@ import {
   uploadToCloudinary,
 } from "../../utils/uploadToCloudinary";
 import { IRequestMeta } from "../auth/auth.interface";
+import { listingCardInclude, toListingCard } from "../listing/listing.service";
 import {
   generateAuthTokens,
   revokeAllUserRefreshTokens,
@@ -207,6 +210,53 @@ const becomeSeller = async (userId: string, meta: IRequestMeta) => {
 
     return { user: sanitizeUser(updatedUser), ...tokens };
   });
+};
+
+// ============================================
+// Public seller profile
+// ============================================
+
+/*
+ * GET /users/:id/public — never exposes email or phone.
+ */
+const getPublicProfile = async (id: string) => {
+  const user = await prisma.user.findFirst({
+    where: { id, isDeleted: false, status: { not: UserStatus.BLOCKED } },
+    select: {
+      ...sellerSummarySelect,
+      bio: true,
+      division: true,
+      district: true,
+      createdAt: true,
+      emailVerified: true,
+    },
+  });
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "Seller not found");
+  }
+
+  const [activeListings, activeCount, soldCount] = await Promise.all([
+    prisma.listing.findMany({
+      where: { sellerId: id, isDeleted: false, status: ListingStatus.APPROVED },
+      orderBy: { approvedAt: "desc" },
+      take: 12,
+      include: listingCardInclude,
+    }),
+    prisma.listing.count({ where: { sellerId: id, isDeleted: false, status: ListingStatus.APPROVED } }),
+    prisma.listing.count({ where: { sellerId: id, isDeleted: false, status: ListingStatus.SOLD } }),
+  ]);
+
+  return {
+    ...toSellerSummary(user),
+    bio: user.bio,
+    division: user.division,
+    district: user.district,
+    memberSince: user.createdAt,
+    emailVerified: user.emailVerified,
+    stats: { activeListings: activeCount, soldListings: soldCount },
+    listings: activeListings.map((listing) => toListingCard(listing)),
+  };
 };
 
 // ============================================
@@ -555,6 +605,7 @@ export const UserService = {
   updateMyProfile,
   deleteMyAccount,
   becomeSeller,
+  getPublicProfile,
   createUser,
   getAllUsers,
   getUserById,

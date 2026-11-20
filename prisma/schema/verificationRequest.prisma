@@ -1,0 +1,34 @@
+model VerificationRequest {
+  id String @id @default(uuid())
+
+  userId String
+
+  type VerificationType
+
+  status VerificationStatus @default(PENDING)
+
+  // ID: { fullName, nidLast4 } · DEALER: { businessName, tradeLicenseNumber, address }
+  // the full NID number is never stored
+  details Json @default("{}")
+
+  rejectionReason String?
+
+  reviewedById String?
+
+  reviewedAt DateTime?
+
+  // document files are deleted from storage 30 days after a decision
+  documentsPurgedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  documents VerificationDocument[]
+
+  @@index([userId, type])
+  @@index([status, createdAt])
+  @@map("verification_requests")
+}

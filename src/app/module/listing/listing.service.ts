@@ -13,6 +13,11 @@ import { appEvents } from "../../events/appEvents";
 import { findDistrict, isInsideBangladesh } from "../../helper/bdLocations";
 import { validateSpecs } from "../../helper/buildDynamicSpecSchema";
 import { isUuid } from "../../helper/isUuid";
+import {
+  sellerSummarySelect,
+  toSellerBadges,
+  toSellerSummary,
+} from "../../helper/sellerBadges";
 import { queryBuilder } from "../../helper/queryBuilder";
 import { IQuery } from "../../interfaces";
 import { prisma } from "../../lib/prisma";
@@ -25,6 +30,7 @@ import {
   uploadToCloudinary,
 } from "../../utils/uploadToCloudinary";
 import { IRequestMeta } from "../auth/auth.interface";
+import { recordRecentlyViewed } from "../recentlyViewed/recentlyViewed.utils";
 import { parseAttributes } from "../vehicleType/vehicleType.utils";
 import { TSpecs } from "../vehicleType/vehicleType.interface";
 import {
@@ -63,6 +69,7 @@ export const listingCardInclude = {
   vehicleModel: { select: { id: true, name: true, slug: true } },
   vehicleType: { select: { id: true, name: true, slug: true, attributes: true } },
   _count: { select: { images: true } },
+  seller: { select: sellerSummarySelect },
 } satisfies Prisma.ListingInclude;
 
 type TListingCardRow = Prisma.ListingGetPayload<{ include: typeof listingCardInclude }>;
@@ -101,6 +108,7 @@ export const toListingCard = (listing: TListingCardRow, distanceKm?: number | nu
   createdAt: listing.createdAt,
   updatedAt: listing.updatedAt,
   distanceKm: distanceKm ?? null,
+  seller: toSellerSummary(listing.seller),
 });
 
 const detailInclude = {
@@ -117,6 +125,10 @@ const detailInclude = {
       status: true,
       emailVerified: true,
       phoneVerified: true,
+      idVerifiedAt: true,
+      dealerVerifiedAt: true,
+      ratingAverage: true,
+      ratingCount: true,
       division: true,
       district: true,
       createdAt: true,
@@ -140,6 +152,20 @@ const toListingDetail = (listing: TListingDetailRow) => {
     vehicleType: {
       ...listing.vehicleType,
       attributes: parseAttributes(listing.vehicleType.attributes),
+    },
+    seller: {
+      id: listing.seller.id,
+      name: listing.seller.name,
+      imageUrl: listing.seller.imageUrl,
+      role: listing.seller.role,
+      emailVerified: listing.seller.emailVerified,
+      phoneVerified: listing.seller.phoneVerified,
+      division: listing.seller.division,
+      district: listing.seller.district,
+      createdAt: listing.seller.createdAt,
+      ratingAverage: Math.round(listing.seller.ratingAverage * 10) / 10,
+      ratingCount: listing.seller.ratingCount,
+      badges: toSellerBadges(listing.seller),
     },
   };
 };
@@ -897,7 +923,7 @@ const getManagedListings = async (query: IQuery) => {
       orderBy,
       include: {
         ...listingCardInclude,
-        seller: { select: { id: true, name: true, email: true, role: true } },
+        seller: { select: { ...sellerSummarySelect, email: true } },
       },
     }),
     prisma.listing.count({ where: { AND: andConditions } }),
@@ -909,7 +935,10 @@ const getManagedListings = async (query: IQuery) => {
   ]);
 
   return {
-    data: listings.map((listing) => ({ ...toListingCard(listing), seller: listing.seller })),
+    data: listings.map((listing) => ({
+      ...toListingCard(listing),
+      seller: { ...toSellerSummary(listing.seller), email: listing.seller.email },
+    })),
     meta: {
       ...queryBuilder.buildMeta(page, limit, total),
       statusCounts: Object.fromEntries(
@@ -968,6 +997,12 @@ const getListingByIdOrSlug = async (
     } catch (error) {
       console.error("View counting failed:", error);
     }
+  }
+
+  if (viewer && !isOwner && PUBLIC_STATUSES.includes(listing.status)) {
+    recordRecentlyViewed(viewer.userId, listing.id).catch((error) =>
+      console.error("Recording recently viewed failed:", error),
+    );
   }
 
   return { ...toListingDetail(listing), isOwner };

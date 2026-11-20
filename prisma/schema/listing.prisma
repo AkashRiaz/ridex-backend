@@ -92,6 +92,14 @@ model Listing {
 
   images ListingImage[]
 
+  wishlistItems WishlistItem[]
+
+  recentlyViewed RecentlyViewed[]
+
+  reviews Review[]
+
+  reports Report[]
+
   @@index([status])
   @@index([sellerId])
   @@index([vehicleTypeId])

@@ -51,6 +51,8 @@ router.delete(
 
 router.post("/me/become-seller", auth(Role.BUYER), UserController.becomeSeller);
 
+router.get("/:id/public", UserController.getPublicProfile);
+
 router.get(
   "/:id",
   auth(Role.SUPER_ADMIN, Role.ADMIN, Role.MODERATOR),

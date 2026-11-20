@@ -75,6 +75,19 @@ const becomeSeller = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getPublicProfile = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const result = await UserService.getPublicProfile(id as string);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Seller profile retrieved successfully",
+    data: result,
+  });
+});
+
 const createUser = catchAsync(async (req: Request, res: Response) => {
   const result = await UserService.createUser(
     req.user as RequestUser,
@@ -193,6 +206,7 @@ export const UserController = {
   updateMyProfile,
   deleteMyAccount,
   becomeSeller,
+  getPublicProfile,
   createUser,
   getAllUsers,
   getUserById,

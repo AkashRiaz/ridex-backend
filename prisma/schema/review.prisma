@@ -1,0 +1,40 @@
+model Review {
+  id String @id @default(uuid())
+
+  reviewerId String
+
+  sellerId String
+
+  listingId String
+
+  // 1-5 stars
+  rating Int
+
+  comment String @default("")
+
+  sellerReply String?
+
+  sellerRepliedAt DateTime?
+
+  // hidden by moderation; hidden reviews do not count toward the seller's rating
+  isHidden Boolean @default(false)
+
+  hiddenReason String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  reviewer User @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  seller User @relation("ReviewsReceived", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  reports Report[]
+
+  @@unique([reviewerId, listingId])
+  @@index([sellerId, isHidden, createdAt])
+  @@index([listingId])
+  @@map("reviews")
+}

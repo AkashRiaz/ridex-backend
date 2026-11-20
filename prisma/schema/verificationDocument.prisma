@@ -1,0 +1,23 @@
+model VerificationDocument {
+  id String @id @default(uuid())
+
+  requestId String
+
+  kind DocumentKind
+
+  // private Cloudinary asset — no public URL is stored; admins get short-lived signed links
+  publicId String
+
+  resourceType String
+
+  format String
+
+  bytes Int
+
+  createdAt DateTime @default(now())
+
+  request VerificationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@map("verification_documents")
+}

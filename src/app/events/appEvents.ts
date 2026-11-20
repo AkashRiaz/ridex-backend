@@ -20,6 +20,11 @@ export type TAppEvents = {
   "listing.sold": TListingRef;
   "listing.priceDropped": TListingRef & { oldPrice: number; newPrice: number };
   "listing.expired": TListingRef;
+  "review.created": { reviewId: string; sellerId: string; reviewerId: string; rating: number };
+  "report.created": { reportId: string; targetType: string; targetId: string; reporterId: string };
+  "verification.submitted": { requestId: string; userId: string; type: string };
+  "verification.approved": { requestId: string; userId: string; type: string };
+  "verification.rejected": { requestId: string; userId: string; type: string; reason: string };
 };
 
 class TypedEmitter {

@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.5.0] — Phase 1 · Part 4: engagement + trust (2026-11-21)
+
+### Added
+- **Migration `engagement_trust`**:
+  - New tables: `WishlistItem`, `RecentlyViewed`, `Review`, `Report`, `VerificationRequest` and `VerificationDocument`.
+  - New enums for report targets, reasons and statuses, and for verification types, statuses and document kinds.
+  - New `User` fields: `ratingAverage`, `ratingCount`, `idVerifiedAt` and `dealerVerifiedAt`.
+- **wishlist module**:
+  - Save and remove listings (approved only, never your own; saving is idempotent).
+  - My wishlist returns cards with `isAvailable`, and a list of saved IDs for heart icons.
+- **recentlyViewed module**:
+  - A view is recorded when a signed-in user opens a listing they don't own. Only the latest 50 are kept.
+  - Users can list, remove one or clear all.
+- **review module** (seller ratings):
+  - One review per listing. The reviewer needs a verified email or phone and must have viewed or saved the listing.
+  - The eligibility endpoint returns reason codes.
+  - Authors can edit within 30 days. Authors and admins can delete; admin deletes are audit-logged.
+  - Sellers can reply once.
+  - Moderators can hide or unhide a review, with a reason.
+  - The seller rating counts visible reviews only.
+  - The public list returns an average, a count and a 1–5 distribution.
+- **report module**:
+  - Users can report listings, users and reviews. Message reports arrive with chat.
+  - Limits: one open report per target, and 10 reports per hour (Redis).
+  - The staff queue is sorted by priority (most-reported targets first) and shows the number of open reports per target.
+  - Resolving a report can take down the listing, hide the review or block the user (admins only). It also closes the other open reports on the same target.
+- **verification module**:
+  - ID verification: NID front, back and selfie. Only the last 4 NID digits are stored.
+  - Dealer verification: trade license, an optional TIN certificate and up to 4 showroom photos. PDFs are allowed for the license and TIN only.
+  - Files go to Cloudinary as private uploads, and admins view them through signed links that expire after 10 minutes.
+  - Admins approve or reject (rejecting needs a reason). Admins can't review their own request.
+  - Approving a dealer also activates a PENDING dealer account.
+  - Every decision is audit-logged.
+- **Verified badges**: `helper/sellerBadges.ts` adds phone, ID and dealer badges and the seller rating to listing cards, listing detail and the new public seller profile (`GET /users/:id/public`).
+- **Cron**: verification documents are purged daily at 03:00, 30 days after a decision.
+- **Events**: review.created, report.created, and verification.submitted, approved and rejected.
+- **Tests**: review eligibility and edit window, report target mapping, action rules and priority sort, verification document rules, NID masking, purge timing, and payload validation.
+- **Postman**: Wishlist, Recently Viewed, Reviews, Reports and Verifications folders, plus Public Seller Profile.
+
+### Changed
+- `uploadToCloudinary` supports private uploads and returns the public ID, resource type, format and size. New helpers: `deleteFromCloudinary` options and `getPrivateDownloadUrl`.
+
 ## [0.4.0] — Phase 1 · Part 3: listing + search (2026-11-20)
 
 ### Added

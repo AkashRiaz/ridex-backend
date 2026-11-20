@@ -1,0 +1,17 @@
+model RecentlyViewed {
+  id String @id @default(uuid())
+
+  userId String
+
+  listingId String
+
+  viewedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId, viewedAt])
+  @@map("recently_viewed")
+}

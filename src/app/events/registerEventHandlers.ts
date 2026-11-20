@@ -13,6 +13,11 @@ export const registerEventHandlers = () => {
     "listing.sold",
     "listing.priceDropped",
     "listing.expired",
+    "review.created",
+    "report.created",
+    "verification.submitted",
+    "verification.approved",
+    "verification.rejected",
   ];
 
   for (const event of events) {

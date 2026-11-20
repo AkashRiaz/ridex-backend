@@ -57,3 +57,49 @@ enum ListingCondition {
   USED
   RECONDITIONED
 }
+
+enum ReportTargetType {
+  LISTING
+  USER
+  REVIEW
+  MESSAGE
+}
+
+enum ReportReason {
+  SCAM
+  FAKE_LISTING
+  WRONG_INFO
+  DUPLICATE
+  ALREADY_SOLD
+  OFFENSIVE
+  HARASSMENT
+  SPAM
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum VerificationType {
+  ID
+  DEALER
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DocumentKind {
+  NID_FRONT
+  NID_BACK
+  SELFIE
+  TRADE_LICENSE
+  TIN_CERTIFICATE
+  SHOWROOM_PHOTO
+}

@@ -44,6 +44,18 @@
     {
       "key": "imageId",
       "value": ""
+    },
+    {
+      "key": "reviewId",
+      "value": ""
+    },
+    {
+      "key": "reportId",
+      "value": ""
+    },
+    {
+      "key": "verificationId",
+      "value": ""
     }
   ],
   "auth": {
@@ -539,6 +551,17 @@
             "url": "{{apiUrl}}/users/{{userId}}/restore",
             "description": "SUPER_ADMIN, ADMIN."
           }
+        },
+        {
+          "name": "Public Seller Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/users/{{userId}}/public",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. Name, photo, role, rating, badges, bio, location, member since, stats and up to 12 active listings. Never email or phone."
+          }
         }
       ]
     },
@@ -992,6 +1015,377 @@
               "type": "noauth"
             },
             "description": "Public. Filterable attributes, brands with counts, price/year ranges, conditions, divisions/districts with counts."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wishlist",
+      "item": [
+        {
+          "name": "My Wishlist",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/wishlist?page=1&limit=24",
+            "description": "Signed in. Saved listing cards with `savedAt` and `isAvailable` (false once sold, expired or taken down)."
+          }
+        },
+        {
+          "name": "My Saved IDs",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/wishlist/ids",
+            "description": "Signed in. Up to 500 saved listing ids, for filling heart icons."
+          }
+        },
+        {
+          "name": "Save Listing",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/wishlist/{{listingId}}",
+            "description": "Signed in. Approved listings only, not your own. Saving twice is fine."
+          }
+        },
+        {
+          "name": "Remove From Wishlist",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/wishlist/{{listingId}}",
+            "description": "Signed in."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recently Viewed",
+      "item": [
+        {
+          "name": "My Recently Viewed",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/recently-viewed?page=1&limit=24",
+            "description": "Signed in. Recorded when you open a listing you do not own. Keeps the latest 50."
+          }
+        },
+        {
+          "name": "Remove One",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/recently-viewed/{{listingId}}",
+            "description": "Signed in."
+          }
+        },
+        {
+          "name": "Clear All",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/recently-viewed",
+            "description": "Signed in."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews",
+      "item": [
+        {
+          "name": "Seller Reviews (public)",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/reviews?seller={{userId}}&page=1&limit=10",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. Needs `seller` or `listing`. `meta.summary` has the average, the count and the 1–5 distribution. Hidden reviews are left out."
+          }
+        },
+        {
+          "name": "Eligibility",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/reviews/eligibility/{{listingId}}",
+            "description": "Signed in. `{ allowed }` or `{ allowed: false, code, message }`. Codes: OWN_LISTING, LISTING_UNAVAILABLE, UNVERIFIED, ALREADY_REVIEWED, NO_INTERACTION."
+          }
+        },
+        {
+          "name": "Create Review",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/reviews",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"rating\": 5,\n  \"comment\": \"Honest seller, bike exactly as described.\"\n}"
+            },
+            "description": "Signed in, verified email or phone, after viewing or saving the listing. One per listing."
+          }
+        },
+        {
+          "name": "Reviews I Gave",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/reviews/given?page=1&limit=10",
+            "description": "Signed in. Each row has `canEdit` (30-day window)."
+          }
+        },
+        {
+          "name": "Reviews I Received",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/reviews/received?replied=false&page=1&limit=10",
+            "description": "Signed in. Includes hidden reviews. `replied=false` lists reviews still waiting for your reply."
+          }
+        },
+        {
+          "name": "Update Review",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/reviews/{{reviewId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comment\": \"Updated comment\"\n}"
+            },
+            "description": "Author only, within 30 days."
+          }
+        },
+        {
+          "name": "Delete Review",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/reviews/{{reviewId}}",
+            "description": "Author or admin. Admin deletes are audit-logged."
+          }
+        },
+        {
+          "name": "Reply To Review",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/reviews/{{reviewId}}/reply",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reply\": \"Thank you for buying from us!\"\n}"
+            },
+            "description": "The reviewed seller, once."
+          }
+        },
+        {
+          "name": "Hide / Unhide Review",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/reviews/{{reviewId}}/visibility",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isHidden\": true,\n  \"reason\": \"Abusive language\"\n}"
+            },
+            "description": "Moderator, admin. Hiding needs a reason. The seller's rating is recalculated."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Create Report",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/reports",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetType\": \"LISTING\",\n  \"targetId\": \"{{listingId}}\",\n  \"reason\": \"WRONG_INFO\",\n  \"details\": \"Mileage looks wrong\"\n}"
+            },
+            "description": "Signed in. targetType: LISTING | USER | REVIEW | MESSAGE (MESSAGE arrives with chat). reason: SCAM | FAKE_LISTING | WRONG_INFO | DUPLICATE | ALREADY_SOLD | OFFENSIVE | HARASSMENT | SPAM | OTHER. One open report per target; 10 per hour."
+          }
+        },
+        {
+          "name": "My Reports",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/reports/my?page=1&limit=10",
+            "description": "Signed in."
+          }
+        },
+        {
+          "name": "Report Queue",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/reports?status=OPEN&targetType=LISTING&sortBy=priority&page=1&limit=20",
+            "description": "Moderator, admin. status: OPEN | IN_REVIEW | RESOLVED | DISMISSED | ALL (default: open and in-review). sortBy: priority (most-reported targets first) | newest. Each row has `openReportsOnTarget`."
+          }
+        },
+        {
+          "name": "Report Details",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/reports/{{reportId}}",
+            "description": "Moderator, admin. Includes the target snapshot and up to 20 other reports on the same target."
+          }
+        },
+        {
+          "name": "Update / Resolve Report",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/reports/{{reportId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"RESOLVED\",\n  \"resolutionNote\": \"Scam confirmed\",\n  \"action\": \"TAKE_DOWN_LISTING\"\n}"
+            },
+            "description": "Moderator, admin. RESOLVED and DISMISSED need `resolutionNote`. action: NONE | TAKE_DOWN_LISTING | HIDE_REVIEW | BLOCK_USER (admins only). Resolving also closes the other open reports on the same target."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Verifications",
+      "item": [
+        {
+          "name": "My Verification",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/verifications/me",
+            "description": "Signed in. Phone, ID and dealer badge status plus the request history."
+          }
+        },
+        {
+          "name": "Submit ID Verification",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/verifications",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "documents",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "documents",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "documents",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "data",
+                  "type": "text",
+                  "value": "{\"type\":\"ID\",\"fullName\":\"Rahim Uddin\",\"nidNumber\":\"1234567890123\",\"documentKinds\":[\"NID_FRONT\",\"NID_BACK\",\"SELFIE\"]}"
+                }
+              ]
+            },
+            "description": "Signed in. multipart: `documents` files plus `data` JSON. `documentKinds[i]` describes file i. ID needs NID_FRONT, NID_BACK and SELFIE (photos). Only the last 4 NID digits are stored. Files are private on Cloudinary."
+          }
+        },
+        {
+          "name": "Submit Dealer Verification",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/verifications",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "documents",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "documents",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "data",
+                  "type": "text",
+                  "value": "{\"type\":\"DEALER\",\"businessName\":\"Dhaka Moto House\",\"tradeLicenseNumber\":\"TRAD/DNCC/012345\",\"division\":\"Dhaka\",\"district\":\"Dhaka\",\"area\":\"Tejgaon\",\"documentKinds\":[\"TRADE_LICENSE\",\"SHOWROOM_PHOTO\"]}"
+                }
+              ]
+            },
+            "description": "Dealer role. TRADE_LICENSE required (photo or PDF); TIN_CERTIFICATE optional (photo or PDF); up to 4 SHOWROOM_PHOTO."
+          }
+        },
+        {
+          "name": "Verification Queue",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/verifications?status=PENDING&type=ID&page=1&limit=20",
+            "description": "Admin, super admin. Pending first, oldest first. `meta.statusCounts`."
+          }
+        },
+        {
+          "name": "Verification Details",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/verifications/{{verificationId}}",
+            "description": "Admin, super admin. Document links are signed and expire after 10 minutes; null once purged (30 days after the decision)."
+          }
+        },
+        {
+          "name": "Approve / Reject",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/verifications/{{verificationId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\"\n}"
+            },
+            "description": "Admin, super admin. Rejecting needs `reason`. Approving a dealer also activates a PENDING dealer account."
           }
         }
       ]

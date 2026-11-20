@@ -58,6 +58,18 @@ model User {
   createdById String?
 
   // ============================================
+  // Trust (denormalised for fast badges and ratings)
+  // ============================================
+
+  ratingAverage Float @default(0)
+
+  ratingCount Int @default(0)
+
+  idVerifiedAt DateTime?
+
+  dealerVerifiedAt DateTime?
+
+  // ============================================
   // Soft delete & timestamps
   // ============================================
 
@@ -76,6 +88,20 @@ model User {
   auditLogs AuditLog[]
 
   listings Listing[] @relation("SellerListings")
+
+  wishlistItems WishlistItem[]
+
+  recentlyViewed RecentlyViewed[]
+
+  reviewsGiven Review[] @relation("ReviewsGiven")
+
+  reviewsReceived Review[] @relation("ReviewsReceived")
+
+  reportsMade Report[] @relation("ReportsMade")
+
+  reportsAgainst Report[] @relation("ReportsAgainst")
+
+  verificationRequests VerificationRequest[]
 
   @@index([email])
   @@index([phone])

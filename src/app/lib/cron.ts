@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { config } from "../config";
 import { ListingService } from "../module/listing/listing.service";
+import { VerificationService } from "../module/verification/verification.service";
 import { prisma } from "./prisma";
 
 /*
@@ -49,6 +50,23 @@ export const expireListings = async () => {
       }
     } catch (error) {
       console.error("Error expiring listings:", error);
+    }
+  });
+};
+
+/*
+ * Daily at 03:00: delete verification document files 30 days after a decision.
+ */
+export const purgeVerificationDocuments = async () => {
+  cron.schedule("0 3 * * *", async () => {
+    try {
+      const count = await VerificationService.purgeReviewedDocuments();
+
+      if (count > 0) {
+        console.log(`Purged documents of ${count} verification request(s).`);
+      }
+    } catch (error) {
+      console.error("Error purging verification documents:", error);
     }
   });
 };

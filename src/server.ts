@@ -2,7 +2,11 @@ import { Server } from "http";
 import app from "./app";
 import { config } from "./app/config";
 import { registerEventHandlers } from "./app/events/registerEventHandlers";
-import { deleteUnverifiedUsers, expireListings } from "./app/lib/cron";
+import {
+  deleteUnverifiedUsers,
+  expireListings,
+  purgeVerificationDocuments,
+} from "./app/lib/cron";
 import { isSmtpConfigured, transporter } from "./app/lib/nodemailer";
 import { prisma } from "./app/lib/prisma";
 import { redisClient } from "./app/lib/redis";
@@ -40,6 +44,7 @@ const main = async () => {
 
     await deleteUnverifiedUsers();
     await expireListings();
+    await purgeVerificationDocuments();
 
     registerEventHandlers();
 
