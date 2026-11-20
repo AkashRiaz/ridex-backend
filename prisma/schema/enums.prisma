@@ -1,0 +1,37 @@
+enum AuthProvider {
+  CREDENTIALS
+  GOOGLE
+  PHONE
+}
+
+// Keep in sync with ridex-frontend/types/common.type.ts
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MODERATOR
+  DEALER
+  DEALER_STAFF
+  SELLER
+  INSPECTOR
+  BUYER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+  PENDING
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  APPROVE
+  REJECT
+  PUBLISH
+  CANCEL
+  PAYMENT
+}

@@ -1,0 +1,31 @@
+{
+  "info": {
+    "name": "RideX Backend",
+    "description": "RideX API. One folder per module, added as each module is built.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "apiUrl", "value": "{{baseUrl}}/api/v1" },
+    { "key": "accessToken", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health",
+          "request": { "method": "GET", "url": "{{baseUrl}}/health", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "Welcome",
+          "request": { "method": "GET", "url": "{{baseUrl}}/", "auth": { "type": "noauth" } }
+        }
+      ]
+    }
+  ]
+}
