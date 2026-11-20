@@ -1,0 +1,25 @@
+<%- include("partials/header", { title: "Your account is ready" }) %>
+
+<p style="margin: 0 0 15px; font-size: 16px; line-height: 1.6;">
+  Hello <strong><%= name %></strong>,
+</p>
+
+<p style="margin: 0 0 20px; font-size: 15px; line-height: 1.7; color: #555555;">
+  An administrator created a <strong><%= role %></strong> account for you on <%= appName %>.
+  Sign in with the temporary password below. You will be asked to choose a new password.
+</p>
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px;">
+  <tr>
+    <td style="padding: 16px 20px; font-size: 14px; line-height: 1.8;">
+      <strong>Email:</strong> <%= email %><br />
+      <strong>Temporary password:</strong> <span style="font-family: monospace; font-size: 16px;"><%= tempPassword %></span>
+    </td>
+  </tr>
+</table>
+
+<p style="margin: 25px 0 0; text-align: center;">
+  <a href="<%= frontendUrl %>/login" style="display: inline-block; padding: 12px 28px; background-color: #ea580c; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600;">Sign in</a>
+</p>
+
+<%- include("partials/footer") %>

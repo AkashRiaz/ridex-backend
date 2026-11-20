@@ -53,7 +53,7 @@ export const auth = (...requiredRoles: Role[]) => {
       );
     }
 
-    const { userId, role, iat } = verifiedToken.data as JwtPayload;
+    const { userId, role, pwdAt } = verifiedToken.data as JwtPayload;
 
     if (requiredRoles.length && !requiredRoles.includes(role)) {
       throw new AppError(
@@ -94,13 +94,10 @@ export const auth = (...requiredRoles: Role[]) => {
     }
 
     /*
-     * Tokens issued before a password change are rejected.
+     * Tokens issued before a password change are rejected:
+     * the token's password version must match the user's.
      */
-    if (
-      user.passwordChangedAt &&
-      typeof iat === "number" &&
-      Math.floor(user.passwordChangedAt.getTime() / 1000) > iat
-    ) {
+    if ((user.passwordChangedAt?.getTime() ?? null) !== (pwdAt ?? null)) {
       throw new AppError(
         httpStatus.UNAUTHORIZED,
         "Password was changed recently. Please log in again.",

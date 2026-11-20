@@ -25,11 +25,43 @@ model User {
 
   passwordChangedAt DateTime?
 
-  isDeleted Boolean @default(false)
+  // ============================================
+  // Profile
+  // ============================================
 
   imageUrl String?
 
   imagePublicId String?
+
+  bio String?
+
+  gender Gender?
+
+  dateOfBirth DateTime?
+
+  division String?
+
+  district String?
+
+  area String?
+
+  // ============================================
+  // Moderation
+  // ============================================
+
+  blockedReason String?
+
+  blockedAt DateTime?
+
+  blockedById String?
+
+  createdById String?
+
+  // ============================================
+  // Soft delete & timestamps
+  // ============================================
+
+  isDeleted Boolean @default(false)
 
   deletedAt DateTime?
 
@@ -47,5 +79,6 @@ model User {
   @@index([phone])
   @@index([role])
   @@index([status])
+  @@index([isDeleted])
   @@map("users")
 }

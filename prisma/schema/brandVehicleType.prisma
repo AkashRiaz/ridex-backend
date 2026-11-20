@@ -1,0 +1,15 @@
+model BrandVehicleType {
+  brandId String
+
+  vehicleTypeId String
+
+  createdAt DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  vehicleType VehicleType @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
+
+  @@id([brandId, vehicleTypeId])
+  @@index([vehicleTypeId])
+  @@map("brand_vehicle_types")
+}

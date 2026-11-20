@@ -1,0 +1,35 @@
+model VehicleType {
+  id String @id @default(uuid())
+
+  name String @unique
+
+  slug String @unique
+
+  description String?
+
+  // lucide icon name, e.g. "bike", "car"
+  icon String?
+
+  imageUrl String?
+
+  imagePublicId String?
+
+  // Dynamic spec schema: IVehicleAttribute[] (validated in vehicleType.validation.ts)
+  attributes Json @default("[]")
+
+  isActive Boolean @default(true)
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  brands BrandVehicleType[]
+
+  models VehicleModel[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+  @@map("vehicle_types")
+}

@@ -21,7 +21,7 @@ export const globalRateLimiter = rateLimit({
  */
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10,
+  limit: config.auth_rate_limit_max,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   message: rateLimitResponse(

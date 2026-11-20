@@ -1,29 +1,765 @@
 {
   "info": {
     "name": "RideX Backend",
-    "description": "RideX API. One folder per module, added as each module is built.",
+    "description": "RideX API. One folder per module, added as each module is built.\n\nAuth: log in (or verify) and the test script stores {{accessToken}} automatically. Requests inherit Bearer {{accessToken}} unless marked No Auth.\nPhone numbers accept 01XXXXXXXXX or +8801XXXXXXXXX. With SMS_PROVIDER=console the OTP is printed in the backend terminal.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:5000" },
-    { "key": "apiUrl", "value": "{{baseUrl}}/api/v1" },
-    { "key": "accessToken", "value": "" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "apiUrl",
+      "value": "{{baseUrl}}/api/v1"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "vehicleTypeId",
+      "value": ""
+    },
+    {
+      "key": "brandId",
+      "value": ""
+    },
+    {
+      "key": "vehicleModelId",
+      "value": ""
+    }
   ],
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
   },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// store tokens from any response that returns them",
+          "try {",
+          "  const body = pm.response.json();",
+          "  if (body?.data?.accessToken) pm.collectionVariables.set('accessToken', body.data.accessToken);",
+          "} catch (e) {}"
+        ]
+      }
+    }
+  ],
   "item": [
     {
       "name": "System",
       "item": [
         {
           "name": "Health",
-          "request": { "method": "GET", "url": "{{baseUrl}}/health", "auth": { "type": "noauth" } }
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health",
+            "auth": {
+              "type": "noauth"
+            }
+          }
         },
         {
           "name": "Welcome",
-          "request": { "method": "GET", "url": "{{baseUrl}}/", "auth": { "type": "noauth" } }
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rahim Uddin\",\n  \"email\": \"rahim@example.com\",\n  \"phone\": \"01712345678\",\n  \"password\": \"Ride@2026x\",\n  \"role\": \"SELLER\"\n}"
+            },
+            "description": "Public sign-up. role: BUYER | SELLER | DEALER (DEALER starts PENDING). Email and/or phone required; a 6-digit code is sent to each."
+          }
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/verify-email",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rahim@example.com\",\n  \"otp\": \"123456\"\n}"
+            },
+            "description": "Marks the email verified and returns tokens (also set as cookies)."
+          }
+        },
+        {
+          "name": "Resend Email OTP",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/resend-email-otp",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rahim@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Send Phone OTP",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/phone-otp/send",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"01712345678\",\n  \"purpose\": \"VERIFY\"\n}"
+            },
+            "description": "purpose: VERIFY (unverified phone) | LOGIN (passwordless login, phone must be verified)."
+          }
+        },
+        {
+          "name": "Verify Phone OTP",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/phone-otp/verify",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"01712345678\",\n  \"otp\": \"123456\",\n  \"purpose\": \"VERIFY\"\n}"
+            },
+            "description": "Returns tokens for both purposes."
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"rahim@example.com\",\n  \"password\": \"Ride@2026x\"\n}"
+            },
+            "description": "identifier = email or phone. Requires at least one verified contact."
+          }
+        },
+        {
+          "name": "Google Login",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/google",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"<google id token>\"\n}"
+            },
+            "description": "Only when ENABLE_GOOGLE_LOGIN=true. Unknown emails become BUYER accounts."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/refresh-token",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Uses the refreshToken cookie (or {\"refreshToken\": \"...\"} in the body). Rotates the token; replaying an old one revokes every session."
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/change-password",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"Ride@2026x\",\n  \"newPassword\": \"Ride@2027y\"\n}"
+            },
+            "description": "Signs out all other sessions and returns fresh tokens."
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/forgot-password",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"rahim@example.com\"\n}"
+            },
+            "description": "Code goes by email or SMS depending on the identifier."
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/reset-password",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"rahim@example.com\",\n  \"otp\": \"123456\",\n  \"newPassword\": \"Ride@2027y\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/logout",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "My Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/users/me"
+          }
+        },
+        {
+          "name": "Update My Profile (JSON)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/users/me",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rahim Uddin\",\n  \"bio\": \"Weekend rider\",\n  \"gender\": \"MALE\",\n  \"dateOfBirth\": \"1995-04-12\",\n  \"division\": \"Dhaka\",\n  \"district\": \"Dhaka\",\n  \"area\": \"Mirpur\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update My Profile (with avatar)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/users/me",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "avatar",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "data",
+                  "type": "text",
+                  "value": "{\"bio\":\"Weekend rider\"}"
+                }
+              ]
+            },
+            "description": "multipart/form-data: avatar (image, max MAX_UPLOAD_SIZE_MB) + data (JSON string)."
+          }
+        },
+        {
+          "name": "Delete My Account",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/users/me",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"Ride@2026x\"\n}"
+            },
+            "description": "Soft delete; signs out everywhere."
+          }
+        },
+        {
+          "name": "Create User (admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/users",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Karim Moderator\",\n  \"email\": \"karim@example.com\",\n  \"role\": \"MODERATOR\"\n}"
+            },
+            "description": "SUPER_ADMIN, ADMIN. A temporary password is emailed; the user must change it. Only SUPER_ADMIN can create ADMIN."
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{apiUrl}}/users?searchTerm=&role=&status=&isDeleted=false&page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "searchTerm",
+                  "value": ""
+                },
+                {
+                  "key": "role",
+                  "value": "",
+                  "description": "SUPER_ADMIN | ADMIN | MODERATOR | DEALER | DEALER_STAFF | SELLER | INSPECTOR | BUYER"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "ACTIVE | BLOCKED | PENDING | INACTIVE"
+                },
+                {
+                  "key": "isDeleted",
+                  "value": "false"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
+              ]
+            },
+            "description": "SUPER_ADMIN, ADMIN, MODERATOR."
+          }
+        },
+        {
+          "name": "Get User By Id",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/users/{{userId}}"
+          }
+        },
+        {
+          "name": "Update User Status",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/users/{{userId}}/status",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"BLOCKED\",\n  \"reason\": \"Repeated fake listings\"\n}"
+            },
+            "description": "SUPER_ADMIN, ADMIN. status: ACTIVE | BLOCKED (reason required). Blocking signs the user out everywhere."
+          }
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/users/{{userId}}/role",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"MODERATOR\"\n}"
+            },
+            "description": "SUPER_ADMIN only."
+          }
+        },
+        {
+          "name": "Delete User (soft)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/users/{{userId}}",
+            "description": "SUPER_ADMIN, ADMIN."
+          }
+        },
+        {
+          "name": "Restore User",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/users/{{userId}}/restore",
+            "description": "SUPER_ADMIN, ADMIN."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vehicle Types",
+      "item": [
+        {
+          "name": "Create Vehicle Type",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/vehicle-types",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Car\",\n  \"icon\": \"car\",\n  \"sortOrder\": 2,\n  \"attributes\": []\n}"
+            },
+            "description": "SUPER_ADMIN, ADMIN. JSON, or multipart with an `image` file + `data` JSON."
+          }
+        },
+        {
+          "name": "Get All Vehicle Types",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/vehicle-types?isActive=all&searchTerm=",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. Default shows active only; isActive=all|true|false."
+          }
+        },
+        {
+          "name": "Get Vehicle Type (id or slug)",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/vehicle-types/bike",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. Includes the attribute schema."
+          }
+        },
+        {
+          "name": "Update Vehicle Type",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/vehicle-types/{{vehicleTypeId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Motorcycles and scooters\",\n  \"isActive\": true\n}"
+            },
+            "description": "SUPER_ADMIN, ADMIN. Basic fields only."
+          }
+        },
+        {
+          "name": "Replace Attribute Schema",
+          "request": {
+            "method": "PUT",
+            "url": "{{apiUrl}}/vehicle-types/{{vehicleTypeId}}/attributes",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attributes\": [\n    {\n      \"key\": \"engineCapacity\",\n      \"label\": \"Engine capacity\",\n      \"type\": \"NUMBER\",\n      \"unit\": \"cc\",\n      \"min\": 50,\n      \"max\": 2500,\n      \"required\": true,\n      \"filterable\": true,\n      \"showInCard\": true,\n      \"group\": \"Engine & Performance\",\n      \"sortOrder\": 1\n    },\n    {\n      \"key\": \"abs\",\n      \"label\": \"ABS\",\n      \"type\": \"SELECT\",\n      \"options\": [\n        {\n          \"value\": \"none\",\n          \"label\": \"No ABS\"\n        },\n        {\n          \"value\": \"dual-channel\",\n          \"label\": \"Dual-channel\"\n        }\n      ],\n      \"filterable\": true,\n      \"group\": \"Brakes & Safety\",\n      \"sortOrder\": 2\n    }\n  ]\n}"
+            },
+            "description": "SUPER_ADMIN, ADMIN. Replaces the whole schema. 409 if any model's default specs would become invalid."
+          }
+        },
+        {
+          "name": "Delete Vehicle Type",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/vehicle-types/{{vehicleTypeId}}",
+            "description": "SUPER_ADMIN, ADMIN. 409 while brands/models use it."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Brands",
+      "item": [
+        {
+          "name": "Create Brand",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/brands",
+            "description": "SUPER_ADMIN, ADMIN. multipart: optional logo + data JSON.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "data",
+                  "type": "text",
+                  "value": "{\"name\":\"Benelli\",\"country\":\"Italy\",\"vehicleTypeIds\":[\"{{vehicleTypeId}}\"],\"isPopular\":false}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Brands",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/brands?vehicleType=bike&isPopular=&searchTerm=&isActive=all&page=1&limit=20",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. vehicleType = id or slug."
+          }
+        },
+        {
+          "name": "Get Brand (id or slug)",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/brands/yamaha",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public."
+          }
+        },
+        {
+          "name": "Update Brand",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/brands/{{brandId}}",
+            "description": "SUPER_ADMIN, ADMIN. vehicleTypeIds replaces the links (409 if a removed type still has models).",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "data",
+                  "type": "text",
+                  "value": "{\"isPopular\":true}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Brand",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/brands/{{brandId}}",
+            "description": "SUPER_ADMIN, ADMIN. 409 while it has models."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vehicle Models",
+      "item": [
+        {
+          "name": "Create Vehicle Model",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/vehicle-models",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brandId\": \"{{brandId}}\",\n  \"vehicleTypeId\": \"{{vehicleTypeId}}\",\n  \"name\": \"TRK 251\",\n  \"yearFrom\": 2023,\n  \"defaultSpecs\": {\n    \"engineCapacity\": 249,\n    \"bikeCategory\": \"adventure\",\n    \"abs\": \"dual-channel\"\n  }\n}"
+            },
+            "description": "SUPER_ADMIN, ADMIN. defaultSpecs are validated against the vehicle type's attributes (partial). Optional multipart `image`."
+          }
+        },
+        {
+          "name": "Get All Vehicle Models",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/vehicle-models?vehicleType=bike&brand=yamaha&year=2024&searchTerm=&isActive=all&page=1&limit=20",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. brand / vehicleType = id or slug."
+          }
+        },
+        {
+          "name": "Get Vehicle Model (id, or slug + brand)",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/vehicle-models/r15-v4?brand=yamaha",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. Includes vehicleType.attributes for auto-fill."
+          }
+        },
+        {
+          "name": "Update Vehicle Model",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/vehicle-models/{{vehicleModelId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"yearTo\": 2025,\n  \"defaultSpecs\": {\n    \"engineCapacity\": 155,\n    \"bikeCategory\": \"sports\"\n  }\n}"
+            },
+            "description": "SUPER_ADMIN, ADMIN. defaultSpecs replaces the stored specs."
+          }
+        },
+        {
+          "name": "Delete Vehicle Model",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/vehicle-models/{{vehicleModelId}}",
+            "description": "SUPER_ADMIN, ADMIN."
+          }
         }
       ]
     }
