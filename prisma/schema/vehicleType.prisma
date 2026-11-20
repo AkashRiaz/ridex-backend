@@ -29,6 +29,8 @@ model VehicleType {
 
   models VehicleModel[]
 
+  listings Listing[]
+
   @@index([isActive])
   @@index([sortOrder])
   @@map("vehicle_types")

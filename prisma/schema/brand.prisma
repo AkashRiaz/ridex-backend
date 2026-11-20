@@ -25,6 +25,8 @@ model Brand {
 
   models VehicleModel[]
 
+  listings Listing[]
+
   @@index([isActive])
   @@index([isPopular])
   @@map("brands")

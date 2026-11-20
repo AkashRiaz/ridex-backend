@@ -86,6 +86,13 @@ export const config = {
   max_upload_size_mb: Number(process.env.MAX_UPLOAD_SIZE_MB || 5),
 
   // ============================================
+  // Listings
+  // ============================================
+
+  listing_duration_days: Number(process.env.LISTING_DURATION_DAYS || 60),
+  max_listing_images: Number(process.env.MAX_LISTING_IMAGES || 15),
+
+  // ============================================
   // Super Admin (seeded on boot)
   // ============================================
 

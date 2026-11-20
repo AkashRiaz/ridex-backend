@@ -31,6 +31,8 @@ model VehicleModel {
 
   vehicleType VehicleType @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
 
+  listings Listing[]
+
   @@unique([brandId, name])
   @@unique([brandId, slug])
   @@index([brandId])

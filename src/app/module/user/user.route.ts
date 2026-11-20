@@ -49,6 +49,8 @@ router.delete(
   UserController.deleteMyAccount,
 );
 
+router.post("/me/become-seller", auth(Role.BUYER), UserController.becomeSeller);
+
 router.get(
   "/:id",
   auth(Role.SUPER_ADMIN, Role.ADMIN, Role.MODERATOR),

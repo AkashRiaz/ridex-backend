@@ -3,7 +3,11 @@ import httpStatus from "http-status";
 import { RequestUser } from "../../middleware/checkAuth";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
-import { clearAuthCookies, getRequestMeta } from "../auth/auth.utils";
+import {
+  clearAuthCookies,
+  getRequestMeta,
+  setAuthCookies,
+} from "../auth/auth.utils";
 import { UserService } from "./user.service";
 
 const getMyProfile = catchAsync(async (req: Request, res: Response) => {
@@ -50,6 +54,24 @@ const deleteMyAccount = catchAsync(async (req: Request, res: Response) => {
     success: true,
     message: "Your account has been deleted",
     data: null,
+  });
+});
+
+const becomeSeller = catchAsync(async (req: Request, res: Response) => {
+  const { userId } = req.user as RequestUser;
+
+  const { user, accessToken, refreshToken } = await UserService.becomeSeller(
+    userId,
+    getRequestMeta(req),
+  );
+
+  setAuthCookies(res, { accessToken, refreshToken });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Your account can now post listings",
+    data: { accessToken, refreshToken, user },
   });
 });
 
@@ -170,6 +192,7 @@ export const UserController = {
   getMyProfile,
   updateMyProfile,
   deleteMyAccount,
+  becomeSeller,
   createUser,
   getAllUsers,
   getUserById,

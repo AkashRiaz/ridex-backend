@@ -332,7 +332,14 @@ const deleteVehicleModel = async (id: string) => {
     throw new AppError(httpStatus.NOT_FOUND, "Vehicle model not found");
   }
 
-  // Phase 1 · Part 3: block when listings reference this model
+  const listingCount = await prisma.listing.count({ where: { vehicleModelId: id } });
+
+  if (listingCount > 0) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      `Cannot delete model because ${listingCount} listing(s) use it. Deactivate it instead.`,
+    );
+  }
 
   const deletedModel = await prisma.vehicleModel.delete({ where: { id } });
 

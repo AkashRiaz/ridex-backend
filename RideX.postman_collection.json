@@ -32,6 +32,18 @@
     {
       "key": "vehicleModelId",
       "value": ""
+    },
+    {
+      "key": "listingId",
+      "value": ""
+    },
+    {
+      "key": "listingSlug",
+      "value": ""
+    },
+    {
+      "key": "imageId",
+      "value": ""
     }
   ],
   "auth": {
@@ -389,6 +401,14 @@
               "raw": "{\n  \"password\": \"Ride@2026x\"\n}"
             },
             "description": "Soft delete; signs out everywhere."
+          }
+        },
+        {
+          "name": "Become Seller",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/users/me/become-seller",
+            "description": "BUYER only. Switches to SELLER and returns fresh tokens."
           }
         },
         {
@@ -759,6 +779,219 @@
             "method": "DELETE",
             "url": "{{apiUrl}}/vehicle-models/{{vehicleModelId}}",
             "description": "SUPER_ADMIN, ADMIN."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Listings",
+      "item": [
+        {
+          "name": "Create Draft (step 1)",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/listings",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleTypeId\": \"{{vehicleTypeId}}\",\n  \"brandId\": \"{{brandId}}\",\n  \"vehicleModelId\": \"{{vehicleModelId}}\",\n  \"year\": 2023\n}"
+            },
+            "description": "SELLER, DEALER (active). Specs auto-fill from the model's default specs; location from the seller profile."
+          }
+        },
+        {
+          "name": "Update Listing (autosave)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/listings/{{listingId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Yamaha R15 V4 2023, single owner\",\n  \"price\": 495000,\n  \"isNegotiable\": true,\n  \"condition\": \"USED\",\n  \"mileage\": 8200,\n  \"color\": \"Racing Blue\",\n  \"division\": \"Dhaka\",\n  \"district\": \"Dhaka\",\n  \"area\": \"Mirpur\",\n  \"description\": \"Serviced every 3,000 km.\",\n  \"videoUrl\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\n  \"specs\": {\n    \"engineCapacity\": 155,\n    \"bikeCategory\": \"sports\",\n    \"abs\": \"dual-channel\"\n  }\n}"
+            },
+            "description": "Owner. Approved listings: price/negotiable/description/video/color stay live; other changes go back to PENDING. Exact coordinates: latitude + longitude."
+          }
+        },
+        {
+          "name": "Add Photos",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/listings/{{listingId}}/images",
+            "description": "Owner. multipart `images` (max 15 per listing, 5MB each). New photos on an approved listing send it back to review.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reorder Photos / Set Cover",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/listings/{{listingId}}/images",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": [\n    \"{{imageId}}\"\n  ],\n  \"coverImageId\": \"{{imageId}}\"\n}"
+            },
+            "description": "Owner. `order` must contain every photo id once."
+          }
+        },
+        {
+          "name": "Delete Photo",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/listings/{{listingId}}/images/{{imageId}}",
+            "description": "Owner. A submitted listing keeps at least one photo."
+          }
+        },
+        {
+          "name": "Submit for Review",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/listings/{{listingId}}/submit",
+            "description": "Owner. DRAFT/REJECTED → PENDING. 400 lists everything missing (title, price, location, photos, required specs)."
+          }
+        },
+        {
+          "name": "Approve / Reject (moderation)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/listings/{{listingId}}/status",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REJECTED\",\n  \"reason\": \"Photos do not show the vehicle\"\n}"
+            },
+            "description": "MODERATOR, ADMIN, SUPER_ADMIN. APPROVED sets expiresAt (+LISTING_DURATION_DAYS)."
+          }
+        },
+        {
+          "name": "Mark Sold",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/listings/{{listingId}}/mark-sold",
+            "description": "Owner. APPROVED → SOLD."
+          }
+        },
+        {
+          "name": "Renew",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/listings/{{listingId}}/renew",
+            "description": "Owner. EXPIRED → APPROVED."
+          }
+        },
+        {
+          "name": "Delete Listing (soft)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/listings/{{listingId}}",
+            "description": "Owner, ADMIN, SUPER_ADMIN."
+          }
+        },
+        {
+          "name": "My Listings",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/listings/my-listings?status=&searchTerm=&page=1&limit=12",
+            "description": "Owner. meta.statusCounts per status."
+          }
+        },
+        {
+          "name": "Manage Listings (moderation queue)",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/listings/manage?status=PENDING&searchTerm=&vehicleType=&brand=&page=1&limit=20",
+            "description": "MODERATOR, ADMIN, SUPER_ADMIN. PENDING is sorted oldest first."
+          }
+        },
+        {
+          "name": "Get Listing (id or slug)",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/listings/{{listingSlug}}",
+            "description": "Public for APPROVED/SOLD; owner and staff can see any status. Counts one view per viewer per 24h (never the owner)."
+          }
+        },
+        {
+          "name": "Similar Listings",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/listings/{{listingSlug}}/similar",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. Up to 8."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Search",
+      "item": [
+        {
+          "name": "Search Listings",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/search/listings?searchTerm=yamaha&vehicleType=bike&brand=yamaha,honda&minPrice=100000&maxPrice=600000&minYear=2020&condition=USED&division=Dhaka&spec.engineCapacity.min=150&spec.abs=dual-channel&sortBy=price_asc&page=1&limit=24",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. Full-text (prefix), brand/model lists, price/year/mileage, condition, negotiable, division/district, lat+lng+radius (km), dynamic spec filters (spec.<key>.min/.max for numbers, spec.<key>=a,b for options; vehicleType required). sortBy: relevance | newest | price_asc | price_desc | year_desc | mileage_asc | nearest."
+          }
+        },
+        {
+          "name": "Search Near Me",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/search/listings?lat=23.7925&lng=90.4078&radius=10&sortBy=nearest",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. distanceKm on every card."
+          }
+        },
+        {
+          "name": "Search Filters",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/search/filters?vehicleType=bike",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. Filterable attributes, brands with counts, price/year ranges, conditions, divisions/districts with counts."
           }
         }
       ]

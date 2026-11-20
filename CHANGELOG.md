@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.4.0] — Phase 1 · Part 3: listing + search (2026-11-20)
+
+### Added
+- **Migration `listings_and_search`**:
+  - `Listing` with a dynamic `specs` JSON column, location with optional exact coordinates, the status lifecycle fields and `viewsCount`.
+  - `ListingImage`, with sort order and a cover flag.
+  - New enums `ListingStatus` and `ListingCondition`.
+  - GIN indexes on `specs` (`jsonb_path_ops`) and on `search_vector` (tsvector). Both are declared in the Prisma schema, so they never drift.
+- **listing module** (owner):
+  - Create a draft; specs auto-fill from the model and location from the seller's profile.
+  - Autosave updates. Approved listings return to review on major edits; price, negotiable, description, video and color edits stay live.
+  - Photos: upload (all-or-nothing, max 15), reorder and set cover, delete (the cover moves to the next photo).
+  - Submit, with a checklist of everything missing; mark sold; renew; soft delete.
+  - My listings, with counts per status.
+- **listing module** (staff and public):
+  - Moderation queue (`/manage`), approve, and reject with a reason (approved listings can also be taken down). Every moderation action is audit-logged.
+  - Public detail: unapproved listings are visible only to the owner and staff. A view is counted once per viewer per 24 hours, never for the owner.
+  - Similar listings, scored by same model, then same brand, then closest price.
+- **search module**:
+  - One parameterised SQL query built with `Prisma.sql`.
+  - Full-text search with prefix matching and relevance ranking; it supports Bangla.
+  - Filters: brand and model lists, price, year, mileage, condition, negotiable, division and district.
+  - Radius search: a bounding box, then the Haversine distance.
+  - Dynamic spec filters (`spec.<key>.min/.max`, `spec.<key>=a,b`) that use the GIN index.
+  - 7 sort options.
+  - `/search/filters` returns the data for the filter sidebar, with counts.
+- **Events** (`events/appEvents.ts`): listing submitted, approved, rejected, sold, price dropped and expired. Handlers only log for now.
+- **Cron**: listings expire daily once past `expiresAt` (`LISTING_DURATION_DAYS`, default 60).
+- **Become seller**: `POST /users/me/become-seller` (BUYER → SELLER, fresh tokens).
+- **Middleware**: `optionalAuth` for public routes that recognise signed-in users.
+- **Data**:
+  - `helper/bdLocations.ts`: 8 divisions and 64 districts with centre coordinates.
+  - Seed: 24 approved sample listings. The seed is now resumable per listing.
+- **Tests**: status flow, edit rules, ownership, submit checklist, search SQL building (bound parameters, injection), tsquery building (including Bangla), spec filter parsing, query validation, locations.
+- **Postman**: Listings and Search folders, plus Become Seller.
+
+### Changed
+- vehicleType schema changes are now also checked against listing specs.
+- Deleting a vehicle type, brand or model returns 409 while listings use it.
+- `sendResponse` meta allows extra keys, such as `statusCounts`.
+
+### Fixed
+- Bangla vowel signs (combining marks) were split out of search words.
+
 ## [0.3.0] — Phase 1 · Part 2: vehicleType + brand + vehicleModel (2026-11-20)
 
 ### Added

@@ -1,0 +1,110 @@
+model Listing {
+  id String @id @default(uuid())
+
+  // e.g. "yamaha-r15-v4-2023-k3f9"
+  slug String @unique
+
+  sellerId String
+
+  vehicleTypeId String
+
+  brandId String
+
+  vehicleModelId String?
+
+  title String
+
+  description String @default("")
+
+  price Decimal @db.Decimal(12, 2)
+
+  isNegotiable Boolean @default(false)
+
+  condition ListingCondition @default(USED)
+
+  year Int
+
+  // kilometres driven
+  mileage Int @default(0)
+
+  color String?
+
+  // validated against VehicleType.attributes (buildDynamicSpecSchema)
+  specs Json @default("{}")
+
+  videoUrl String?
+
+  // ============================================
+  // Location
+  // ============================================
+
+  division String @default("")
+
+  district String @default("")
+
+  area String?
+
+  latitude Decimal? @db.Decimal(9, 6)
+
+  longitude Decimal? @db.Decimal(9, 6)
+
+  // ============================================
+  // Moderation & lifecycle
+  // ============================================
+
+  status ListingStatus @default(DRAFT)
+
+  rejectionReason String?
+
+  submittedAt DateTime?
+
+  approvedAt DateTime?
+
+  approvedById String?
+
+  soldAt DateTime?
+
+  expiresAt DateTime?
+
+  viewsCount Int @default(0)
+
+  // title + brand + model + year + location + spec labels (kept in sync by the service)
+  searchText String @default("")
+
+  // full-text vector, written with to_tsvector('simple', searchText) by the service
+  searchVector Unsupported("tsvector")? @map("search_vector")
+
+  isDeleted Boolean @default(false)
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  seller User @relation("SellerListings", fields: [sellerId], references: [id], onDelete: Restrict)
+
+  vehicleType VehicleType @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Restrict)
+
+  vehicleModel VehicleModel? @relation(fields: [vehicleModelId], references: [id], onDelete: Restrict)
+
+  images ListingImage[]
+
+  @@index([status])
+  @@index([sellerId])
+  @@index([vehicleTypeId])
+  @@index([brandId])
+  @@index([vehicleModelId])
+  @@index([price])
+  @@index([year])
+  @@index([mileage])
+  @@index([division, district])
+  @@index([latitude, longitude])
+  @@index([expiresAt])
+  @@index([createdAt])
+  @@index([specs(ops: JsonbPathOps)], type: Gin)
+  @@index([searchVector], type: Gin)
+  @@map("listings")
+}

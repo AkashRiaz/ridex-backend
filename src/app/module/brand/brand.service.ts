@@ -270,7 +270,17 @@ const deleteBrand = async (id: string) => {
     throw new AppError(httpStatus.NOT_FOUND, "Brand not found");
   }
 
-  const modelCount = await prisma.vehicleModel.count({ where: { brandId: id } });
+  const [modelCount, listingCount] = await Promise.all([
+    prisma.vehicleModel.count({ where: { brandId: id } }),
+    prisma.listing.count({ where: { brandId: id } }),
+  ]);
+
+  if (listingCount > 0) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      `Cannot delete brand because ${listingCount} listing(s) use it. Deactivate it instead.`,
+    );
+  }
 
   if (modelCount > 0) {
     throw new AppError(

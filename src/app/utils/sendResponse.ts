@@ -1,10 +1,12 @@
 import { Response } from "express";
 
+// standard pagination meta; modules may add extras (e.g. statusCounts)
 type TMeta = {
   page: number;
   limit: number;
   total: number;
   totalPages: number;
+  [key: string]: unknown;
 };
 
 type TResponseData<T> = {

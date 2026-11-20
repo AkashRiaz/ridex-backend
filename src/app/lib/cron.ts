@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { config } from "../config";
+import { ListingService } from "../module/listing/listing.service";
 import { prisma } from "./prisma";
 
 /*
@@ -31,6 +32,23 @@ export const deleteUnverifiedUsers = async () => {
       }
     } catch (error) {
       console.error("Error deleting unverified users:", error);
+    }
+  });
+};
+
+/*
+ * Daily at 02:00: approved listings past expiresAt become EXPIRED.
+ */
+export const expireListings = async () => {
+  cron.schedule("0 2 * * *", async () => {
+    try {
+      const count = await ListingService.expireListings();
+
+      if (count > 0) {
+        console.log(`Expired ${count} listing(s).`);
+      }
+    } catch (error) {
+      console.error("Error expiring listings:", error);
     }
   });
 };

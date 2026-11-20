@@ -1,7 +1,8 @@
 import { Server } from "http";
 import app from "./app";
 import { config } from "./app/config";
-import { deleteUnverifiedUsers } from "./app/lib/cron";
+import { registerEventHandlers } from "./app/events/registerEventHandlers";
+import { deleteUnverifiedUsers, expireListings } from "./app/lib/cron";
 import { isSmtpConfigured, transporter } from "./app/lib/nodemailer";
 import { prisma } from "./app/lib/prisma";
 import { redisClient } from "./app/lib/redis";
@@ -38,6 +39,9 @@ const main = async () => {
     console.log("Super Admin seeding completed successfully.");
 
     await deleteUnverifiedUsers();
+    await expireListings();
+
+    registerEventHandlers();
 
     server = app.listen(PORT, () => {
       console.log(`${config.app_name} server is running on port ${PORT}`);

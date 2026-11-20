@@ -21,7 +21,11 @@ import {
   uploadToCloudinary,
 } from "../../utils/uploadToCloudinary";
 import { IRequestMeta } from "../auth/auth.interface";
-import { revokeAllUserRefreshTokens } from "../auth/auth.utils";
+import {
+  generateAuthTokens,
+  revokeAllUserRefreshTokens,
+  sanitizeUser,
+} from "../auth/auth.utils";
 import {
   ICreateUserPayload,
   IDeleteMyAccountPayload,
@@ -157,6 +161,51 @@ const deleteMyAccount = async (
       },
       tx,
     );
+  });
+};
+
+/*
+ * BUYER → SELLER self-service. The role lives in the JWT, so old sessions
+ * are revoked and a fresh token pair is returned for this device.
+ */
+const becomeSeller = async (userId: string, meta: IRequestMeta) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+
+  if (!user || user.isDeleted) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  if (user.role !== Role.BUYER) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      user.role === Role.SELLER ? "You are already a seller" : "Only buyer accounts can switch to selling",
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const updatedUser = await tx.user.update({
+      where: { id: userId },
+      data: { role: Role.SELLER },
+    });
+
+    await revokeAllUserRefreshTokens(userId, tx);
+
+    const tokens = await generateAuthTokens(updatedUser, meta, tx);
+
+    await createAuditLog(
+      {
+        userId,
+        action: AuditAction.UPDATE,
+        entity: "User",
+        entityId: userId,
+        oldData: { role: Role.BUYER },
+        newData: { role: Role.SELLER, by: "SELF" },
+        ...meta,
+      },
+      tx,
+    );
+
+    return { user: sanitizeUser(updatedUser), ...tokens };
   });
 };
 
@@ -505,6 +554,7 @@ export const UserService = {
   getMyProfile,
   updateMyProfile,
   deleteMyAccount,
+  becomeSeller,
   createUser,
   getAllUsers,
   getUserById,

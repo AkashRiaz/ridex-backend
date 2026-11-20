@@ -9,11 +9,19 @@
  */
 import bcrypt from "bcrypt";
 import { Prisma } from "../../generated/prisma/client";
-import { AuthProvider, Role, UserStatus } from "../../generated/prisma/enums";
+import {
+  AuthProvider,
+  ListingStatus,
+  Role,
+  UserStatus,
+} from "../../generated/prisma/enums";
 import { config } from "../config";
 import { validateSpecs } from "../helper/buildDynamicSpecSchema";
+import { findDistrict } from "../helper/bdLocations";
 import { generateSlug } from "../helper/generateSlug";
 import { prisma } from "../lib/prisma";
+import { syncSearch } from "../module/listing/listing.service";
+import { generateListingSlug } from "../module/listing/listing.utils";
 import { parseAttributes } from "../module/vehicleType/vehicleType.utils";
 import { VehicleAttributesZodSchema } from "../module/vehicleType/vehicleType.validation";
 import { seedSuperAdmin } from "./seed";
@@ -22,6 +30,7 @@ import {
   BIKE_BRANDS,
   BIKE_VEHICLE_TYPE,
 } from "./seedData/bikeCatalog";
+import { SAMPLE_LISTINGS } from "./seedData/sampleListings";
 
 // ============================================
 // Demo Users (one per role)
@@ -184,6 +193,107 @@ export const seedBrandsAndModels = async () => {
 };
 
 // ============================================
+// Sample listings
+// ============================================
+
+/*
+ * Approved demo listings by the demo seller and dealer.
+ * Idempotent per sample (seller + model + year + price), so an interrupted run can resume.
+ */
+export const seedSampleListings = async () => {
+  const [seller, dealer] = await Promise.all([
+    prisma.user.findUnique({ where: { email: "seller@ridex.demo" } }),
+    prisma.user.findUnique({ where: { email: "dealer@ridex.demo" } }),
+  ]);
+
+  if (!seller || !dealer) {
+    console.log("Demo seller/dealer missing — skipping sample listings.");
+    return;
+  }
+
+  const bikeType = await prisma.vehicleType.findUniqueOrThrow({
+    where: { slug: BIKE_VEHICLE_TYPE.slug },
+  });
+
+  const attributes = parseAttributes(bikeType.attributes);
+  const expiresAt = new Date(Date.now() + config.listing_duration_days * 24 * 60 * 60 * 1000);
+  let created = 0;
+
+  for (const [index, sample] of SAMPLE_LISTINGS.entries()) {
+    const brand = await prisma.brand.findUnique({ where: { slug: sample.brand } });
+    const model = brand
+      ? await prisma.vehicleModel.findUnique({
+          where: { brandId_slug: { brandId: brand.id, slug: sample.model } },
+        })
+      : null;
+
+    if (!brand || !model) {
+      console.log(`Skipping sample listing: ${sample.brand}/${sample.model} not found`);
+      continue;
+    }
+
+    const sellerId = sample.seller === "dealer" ? dealer.id : seller.id;
+
+    const alreadySeeded = await prisma.listing.findFirst({
+      where: { sellerId, vehicleModelId: model.id, year: sample.year, price: sample.price },
+      select: { id: true },
+    });
+
+    if (alreadySeeded) continue;
+
+    const specs = validateSpecs(attributes, model.defaultSpecs);
+
+    if (!specs.success) {
+      throw new Error(`Sample listing ${model.name} has invalid specs: ${specs.message}`);
+    }
+
+    const centre = findDistrict(sample.division, sample.district);
+
+    if (!centre) {
+      throw new Error(`Sample listing ${model.name} has an invalid location`);
+    }
+
+    // spread approval dates over the last few weeks for realistic "newest" sorting
+    const approvedAt = new Date(Date.now() - index * 26 * 60 * 60 * 1000);
+
+    const listing = await prisma.listing.create({
+      data: {
+        slug: generateListingSlug([brand.name, model.name, sample.year]),
+        sellerId,
+        vehicleTypeId: bikeType.id,
+        brandId: brand.id,
+        vehicleModelId: model.id,
+        title: `${brand.name} ${model.name} ${sample.year}${sample.condition === "NEW" ? " (Brand new)" : ""}`,
+        description: sample.description,
+        price: sample.price,
+        isNegotiable: sample.isNegotiable,
+        condition: sample.condition,
+        year: sample.year,
+        mileage: sample.mileage,
+        color: sample.color,
+        specs: specs.data as Prisma.InputJsonValue,
+        division: sample.division,
+        district: sample.district,
+        area: sample.area,
+        // small offset so pins in one district do not overlap exactly
+        latitude: centre.lat + ((index % 5) - 2) * 0.01,
+        longitude: centre.lng + ((index % 3) - 1) * 0.01,
+        status: ListingStatus.APPROVED,
+        submittedAt: approvedAt,
+        approvedAt,
+        expiresAt,
+        viewsCount: (index * 37) % 400,
+      },
+    });
+
+    await syncSearch(listing.id);
+    created += 1;
+  }
+
+  console.log(`Sample listings created: ${created} (others already existed)`);
+};
+
+// ============================================
 // Runner
 // ============================================
 
@@ -196,7 +306,7 @@ const runSeed = async () => {
 
     await seedVehicleTypes();
     await seedBrandsAndModels();
-    // await seedSampleListings();    // Phase 1 · Part 3: listing module
+    await seedSampleListings();
 
     console.log("Demo seeding completed successfully.");
   } catch (error) {

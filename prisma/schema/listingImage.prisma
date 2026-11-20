@@ -1,0 +1,20 @@
+model ListingImage {
+  id String @id @default(uuid())
+
+  listingId String
+
+  url String
+
+  publicId String
+
+  sortOrder Int @default(0)
+
+  isCover Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, sortOrder])
+  @@map("listing_images")
+}

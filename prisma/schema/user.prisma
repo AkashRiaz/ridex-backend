@@ -75,6 +75,8 @@ model User {
 
   auditLogs AuditLog[]
 
+  listings Listing[] @relation("SellerListings")
+
   @@index([email])
   @@index([phone])
   @@index([role])

@@ -219,7 +219,20 @@ const updateVehicleTypeAttributes = async (
       select: { id: true, name: true, defaultSpecs: true },
     });
 
-    const conflicts = findSpecConflicts(payload.attributes, models);
+    // listings are checked like models (partial): new required fields only apply to new edits
+    const listings = await tx.listing.findMany({
+      where: { vehicleTypeId: id, isDeleted: false },
+      select: { id: true, title: true, specs: true },
+    });
+
+    const conflicts = findSpecConflicts(payload.attributes, [
+      ...models,
+      ...listings.map((listing) => ({
+        id: listing.id,
+        name: `listing "${listing.title}"`,
+        defaultSpecs: listing.specs,
+      })),
+    ]);
 
     if (conflicts.length > 0) {
       const preview = conflicts
@@ -229,9 +242,9 @@ const updateVehicleTypeAttributes = async (
 
       throw new AppError(
         httpStatus.CONFLICT,
-        `This change would make ${conflicts.length} model(s) invalid: ${preview}${
+        `This change would make ${conflicts.length} model(s)/listing(s) invalid: ${preview}${
           conflicts.length > 5 ? "; ..." : ""
-        }. Update those models first.`,
+        }. Update those first.`,
       );
     }
 
@@ -248,15 +261,16 @@ const updateVehicleTypeAttributes = async (
 const deleteVehicleType = async (id: string) => {
   const vehicleType = await findVehicleTypeOrThrow(id);
 
-  const [brandCount, modelCount] = await Promise.all([
+  const [brandCount, modelCount, listingCount] = await Promise.all([
     prisma.brandVehicleType.count({ where: { vehicleTypeId: id } }),
     prisma.vehicleModel.count({ where: { vehicleTypeId: id } }),
+    prisma.listing.count({ where: { vehicleTypeId: id } }),
   ]);
 
-  if (brandCount > 0 || modelCount > 0) {
+  if (brandCount > 0 || modelCount > 0 || listingCount > 0) {
     throw new AppError(
       httpStatus.CONFLICT,
-      `Cannot delete vehicle type because ${brandCount} brand(s) and ${modelCount} model(s) use it. Deactivate it instead.`,
+      `Cannot delete vehicle type because ${brandCount} brand(s), ${modelCount} model(s) and ${listingCount} listing(s) use it. Deactivate it instead.`,
     );
   }
 

@@ -42,3 +42,18 @@ enum AuditAction {
   CANCEL
   PAYMENT
 }
+
+enum ListingStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  SOLD
+  EXPIRED
+}
+
+enum ListingCondition {
+  NEW
+  USED
+  RECONDITIONED
+}
