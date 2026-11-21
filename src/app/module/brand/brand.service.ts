@@ -1,5 +1,6 @@
 import httpStatus from "http-status";
 import { Prisma } from "../../../generated/prisma/client";
+import { AuditAction } from "../../../generated/prisma/enums";
 import { BrandWhereInput } from "../../../generated/prisma/models";
 import { config } from "../../config";
 import { generateUniqueSlug } from "../../helper/generateSlug";
@@ -8,6 +9,7 @@ import { queryBuilder } from "../../helper/queryBuilder";
 import { IQuery } from "../../interfaces";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../utils/AppError";
+import { buildAuditDiff, createAuditLog, TAuditActor } from "../../utils/auditLogger";
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
@@ -87,6 +89,7 @@ const assertNameAndSlugAvailable = async (
 const createBrand = async (
   payload: ICreateBrandPayload,
   logo: Express.Multer.File | null,
+  actor: TAuditActor,
 ) => {
   const { vehicleTypeIds, ...brandData } = payload;
 
@@ -114,6 +117,14 @@ const createBrand = async (
       },
     },
     include: brandInclude,
+  });
+
+  await createAuditLog({
+    ...actor,
+    action: AuditAction.CREATE,
+    entity: "Brand",
+    entityId: brand.id,
+    newData: { name: brand.name, slug: brand.slug, isActive: brand.isActive, vehicleTypeIds },
   });
 
   return formatBrand(brand);
@@ -202,6 +213,7 @@ const updateBrand = async (
   id: string,
   payload: IUpdateBrandPayload,
   logo: Express.Multer.File | null,
+  actor: TAuditActor,
 ) => {
   const existingBrand = await prisma.brand.findUnique({ where: { id } });
 
@@ -234,6 +246,12 @@ const updateBrand = async (
 
   const logoResult = await uploadLogo(logo);
 
+  const previousVehicleTypeIds = vehicleTypeIds
+    ? (await prisma.brandVehicleType.findMany({ where: { brandId: id }, select: { vehicleTypeId: true } }))
+        .map((link) => link.vehicleTypeId)
+        .sort()
+    : undefined;
+
   const brand = await prisma.$transaction(async (tx) => {
     if (vehicleTypeIds) {
       await tx.brandVehicleType.deleteMany({ where: { brandId: id } });
@@ -260,10 +278,26 @@ const updateBrand = async (
     await deleteFromCloudinary(existingBrand.logoPublicId);
   }
 
+  const diff = buildAuditDiff(
+    { ...existingBrand, vehicleTypeIds: previousVehicleTypeIds, logoUrl: existingBrand.logoUrl },
+    { ...brandData, vehicleTypeIds: vehicleTypeIds && [...vehicleTypeIds].sort(), logoUrl: logoResult?.secure_url },
+  );
+
+  if (diff.changed) {
+    await createAuditLog({
+      ...actor,
+      action: AuditAction.UPDATE,
+      entity: "Brand",
+      entityId: id,
+      oldData: diff.oldData,
+      newData: diff.newData,
+    });
+  }
+
   return formatBrand(brand);
 };
 
-const deleteBrand = async (id: string) => {
+const deleteBrand = async (id: string, actor: TAuditActor) => {
   const brand = await prisma.brand.findUnique({ where: { id } });
 
   if (!brand) {
@@ -293,6 +327,14 @@ const deleteBrand = async (id: string) => {
   const deletedBrand = await prisma.brand.delete({ where: { id } });
 
   await deleteFromCloudinary(brand.logoPublicId);
+
+  await createAuditLog({
+    ...actor,
+    action: AuditAction.DELETE,
+    entity: "Brand",
+    entityId: id,
+    oldData: { name: brand.name, slug: brand.slug },
+  });
 
   return deletedBrand;
 };

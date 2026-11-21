@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import httpStatus from "http-status";
+import { getAuditActor } from "../../utils/auditLogger";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import { VehicleTypeService } from "./vehicleType.service";
@@ -14,6 +15,7 @@ const createVehicleType = catchAsync(async (req: Request, res: Response) => {
   const result = await VehicleTypeService.createVehicleType(
     req.body,
     getImageFile(req),
+    getAuditActor(req),
   );
 
   sendResponse(res, {
@@ -60,6 +62,7 @@ const updateVehicleType = catchAsync(async (req: Request, res: Response) => {
     id as string,
     req.body,
     getImageFile(req),
+    getAuditActor(req),
   );
 
   sendResponse(res, {
@@ -77,6 +80,7 @@ const updateVehicleTypeAttributes = catchAsync(
     const result = await VehicleTypeService.updateVehicleTypeAttributes(
       id as string,
       req.body,
+      getAuditActor(req),
     );
 
     sendResponse(res, {
@@ -91,7 +95,7 @@ const updateVehicleTypeAttributes = catchAsync(
 const deleteVehicleType = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const result = await VehicleTypeService.deleteVehicleType(id as string);
+  const result = await VehicleTypeService.deleteVehicleType(id as string, getAuditActor(req));
 
   sendResponse(res, {
     success: true,

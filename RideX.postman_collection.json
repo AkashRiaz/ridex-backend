@@ -76,6 +76,10 @@
     {
       "key": "blockedUserId",
       "value": ""
+    },
+    {
+      "key": "auditLogId",
+      "value": ""
     }
   ],
   "auth": {
@@ -1734,6 +1738,102 @@
             "auth": {
               "type": "noauth"
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "description": "Per-role overview stats for the dashboard home pages. Admin and moderator overviews are cached in Redis for `DASHBOARD_CACHE_SECONDS` (default 60).",
+      "item": [
+        {
+          "name": "Admin Overview",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/dashboard/admin/overview?range=30d",
+            "description": "SUPER_ADMIN, ADMIN. Users by role/status, listings by status, reports, pending verifications, chats, daily series (users, submitted, approved, reports, conversations), top brands, listings by division, recent audit activity (admins never see super admin entries). Counts include `change` vs the previous period (null when the previous period was 0). `range=7d|30d|90d` (default 30d, unknown values fall back to 30d). Days are local days in `TIMEZONE`; `series` has one point per day with 0 for empty days."
+          }
+        },
+        {
+          "name": "Moderator Overview",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/dashboard/moderator/overview?range=30d",
+            "description": "MODERATOR, ADMIN, SUPER_ADMIN. Queue sizes, my approvals/rejections (from the audit log) and reports closed, average submit-to-approve hours, open reports by reason and type, the 5 oldest items in each queue. `verifications` is null for moderators. `range=7d|30d|90d` (default 30d, unknown values fall back to 30d). Days are local days in `TIMEZONE`; `series` has one point per day with 0 for empty days."
+          }
+        },
+        {
+          "name": "Seller Overview",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/dashboard/seller/overview?range=30d",
+            "description": "SELLER, DEALER. My listings by status, views, saves, chats, unread, chat-to-sale rate, rating and verification status, daily series (chats, saves, sold), top 5 listings, listings expiring within 7 days, latest reviews. `range=7d|30d|90d` (default 30d, unknown values fall back to 30d). Days are local days in `TIMEZONE`; `series` has one point per day with 0 for empty days."
+          }
+        },
+        {
+          "name": "Buyer Overview",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/dashboard/buyer/overview?range=30d",
+            "description": "BUYER, DEALER_STAFF, INSPECTOR. Saved (available/unavailable), recently viewed, active chats and unread, my reports, reviews written, verification status, daily series (saves, viewed, messages), latest saved, saved by brand. `range=7d|30d|90d` (default 30d, unknown values fall back to 30d). Days are local days in `TIMEZONE`; `series` has one point per day with 0 for empty days."
+          }
+        },
+        {
+          "name": "Staff Queue Counts",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/dashboard/staff/queue-counts",
+            "description": "MODERATOR, ADMIN, SUPER_ADMIN. `{ listings, reports, verifications }` for the sidebar badges; `verifications` is null for moderators."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Logs",
+      "description": "Read-only. SUPER_ADMIN and ADMIN only. Admins never see entries made by a SUPER_ADMIN (a hidden entry returns 404). Keys containing password, secret, token or otp are returned as \"[redacted]\".",
+      "item": [
+        {
+          "name": "All Audit Logs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data[0]) pm.collectionVariables.set('auditLogId', body.data[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/audit-logs?page=1&limit=20&sortOrder=desc",
+            "description": "Filters: `searchTerm` (entity, entity id, user name/email, IP), `action` (CREATE, UPDATE, DELETE, LOGIN, LOGOUT, APPROVE, REJECT, PUBLISH, CANCEL, PAYMENT; unknown → 400), `entity`, `entityId`, `userId`, `from` / `to` (local dates YYYY-MM-DD, `to` inclusive; bad dates or from > to → 400). Sort: createdAt only."
+          }
+        },
+        {
+          "name": "Audit Logs: one entity's history",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/audit-logs?entity=Listing&entityId={{listingId}}",
+            "description": "Every recorded change to one record."
+          }
+        },
+        {
+          "name": "Audit Log Entities",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/audit-logs/entities",
+            "description": "Entity names in the log with counts, for the filter dropdown."
+          }
+        },
+        {
+          "name": "Audit Log By Id",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/audit-logs/{{auditLogId}}",
+            "description": "One entry with the acting user and old/new data."
           }
         }
       ]

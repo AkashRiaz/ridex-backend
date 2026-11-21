@@ -1,7 +1,9 @@
 import { Router } from "express";
+import { AuditLogRoutes } from "../module/auditLog/auditLog.route";
 import { AuthRoutes } from "../module/auth/auth.route";
 import { BrandRoutes } from "../module/brand/brand.route";
 import { ChatRoutes } from "../module/chat/chat.route";
+import { DashboardRoutes } from "../module/dashboard/dashboard.route";
 import { ListingRoutes } from "../module/listing/listing.route";
 import { NotificationRoutes } from "../module/notification/notification.route";
 import { QuickReplyRoutes } from "../module/quickReply/quickReply.route";
@@ -44,6 +46,8 @@ const moduleRoutes: TModuleRoute[] = [
   { path: "/quick-replies", route: QuickReplyRoutes },
   { path: "/blocks", route: UserBlockRoutes },
   { path: "/notifications", route: NotificationRoutes },
+  { path: "/dashboard", route: DashboardRoutes },
+  { path: "/audit-logs", route: AuditLogRoutes },
 ];
 
 moduleRoutes.forEach((moduleRoute) => {

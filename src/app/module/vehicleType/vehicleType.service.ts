@@ -1,5 +1,6 @@
 import httpStatus from "http-status";
 import { Prisma } from "../../../generated/prisma/client";
+import { AuditAction } from "../../../generated/prisma/enums";
 import { VehicleTypeWhereInput } from "../../../generated/prisma/models";
 import { config } from "../../config";
 import { generateUniqueSlug } from "../../helper/generateSlug";
@@ -8,6 +9,7 @@ import { queryBuilder } from "../../helper/queryBuilder";
 import { IQuery } from "../../interfaces";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../utils/AppError";
+import { buildAuditDiff, createAuditLog, TAuditActor } from "../../utils/auditLogger";
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
@@ -81,6 +83,7 @@ const findVehicleTypeOrThrow = async (id: string) => {
 const createVehicleType = async (
   payload: ICreateVehicleTypePayload,
   image: Express.Multer.File | null,
+  actor: TAuditActor,
 ) => {
   await assertNameAndSlugAvailable(payload.name, payload.slug);
 
@@ -92,7 +95,7 @@ const createVehicleType = async (
 
   const imageResult = await uploadImage(image);
 
-  return prisma.vehicleType.create({
+  const vehicleType = await prisma.vehicleType.create({
     data: {
       name: payload.name,
       slug,
@@ -108,6 +111,21 @@ const createVehicleType = async (
     },
     include: withCounts,
   });
+
+  await createAuditLog({
+    ...actor,
+    action: AuditAction.CREATE,
+    entity: "VehicleType",
+    entityId: vehicleType.id,
+    newData: {
+      name: vehicleType.name,
+      slug: vehicleType.slug,
+      isActive: vehicleType.isActive,
+      attributeCount: (payload.attributes ?? []).length,
+    },
+  });
+
+  return vehicleType;
 };
 
 const getAllVehicleTypes = async (query: IQuery) => {
@@ -176,6 +194,7 @@ const updateVehicleType = async (
   id: string,
   payload: IUpdateVehicleTypePayload,
   image: Express.Multer.File | null,
+  actor: TAuditActor,
 ) => {
   const existingVehicleType = await findVehicleTypeOrThrow(id);
 
@@ -200,6 +219,19 @@ const updateVehicleType = async (
     await deleteFromCloudinary(existingVehicleType.imagePublicId);
   }
 
+  const diff = buildAuditDiff(existingVehicleType, { ...payload, imageUrl: imageResult?.secure_url });
+
+  if (diff.changed) {
+    await createAuditLog({
+      ...actor,
+      action: AuditAction.UPDATE,
+      entity: "VehicleType",
+      entityId: id,
+      oldData: diff.oldData,
+      newData: diff.newData,
+    });
+  }
+
   return vehicleType;
 };
 
@@ -210,8 +242,9 @@ const updateVehicleType = async (
 const updateVehicleTypeAttributes = async (
   id: string,
   payload: IUpdateVehicleTypeAttributesPayload,
+  actor: TAuditActor,
 ) => {
-  await findVehicleTypeOrThrow(id);
+  const existingVehicleType = await findVehicleTypeOrThrow(id);
 
   return prisma.$transaction(async (tx) => {
     const models = await tx.vehicleModel.findMany({
@@ -248,17 +281,31 @@ const updateVehicleTypeAttributes = async (
       );
     }
 
-    return tx.vehicleType.update({
+    const vehicleType = await tx.vehicleType.update({
       where: { id },
       data: {
         attributes: payload.attributes as unknown as Prisma.InputJsonValue,
       },
       include: withCounts,
     });
+
+    await createAuditLog(
+      {
+        ...actor,
+        action: AuditAction.UPDATE,
+        entity: "VehicleType",
+        entityId: id,
+        oldData: { attributes: existingVehicleType.attributes as Prisma.InputJsonValue },
+        newData: { attributes: payload.attributes as unknown as Prisma.InputJsonValue },
+      },
+      tx,
+    );
+
+    return vehicleType;
   });
 };
 
-const deleteVehicleType = async (id: string) => {
+const deleteVehicleType = async (id: string, actor: TAuditActor) => {
   const vehicleType = await findVehicleTypeOrThrow(id);
 
   const [brandCount, modelCount, listingCount] = await Promise.all([
@@ -277,6 +324,14 @@ const deleteVehicleType = async (id: string) => {
   const deletedVehicleType = await prisma.vehicleType.delete({ where: { id } });
 
   await deleteFromCloudinary(vehicleType.imagePublicId);
+
+  await createAuditLog({
+    ...actor,
+    action: AuditAction.DELETE,
+    entity: "VehicleType",
+    entityId: id,
+    oldData: { name: vehicleType.name, slug: vehicleType.slug },
+  });
 
   return deletedVehicleType;
 };

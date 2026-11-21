@@ -20,6 +20,9 @@ export const config = {
   // used in notification and email texts; match NEXT_PUBLIC_CURRENCY / NEXT_PUBLIC_DEFAULT_LOCALE
   currency: process.env.CURRENCY || "BDT",
   currency_locale: process.env.CURRENCY_LOCALE || "en-BD",
+  // IANA zone used to bucket dashboard charts by local day
+  timezone: process.env.TIMEZONE || "Asia/Dhaka",
+  dashboard_cache_seconds: Number(process.env.DASHBOARD_CACHE_SECONDS || 60),
 
   // ============================================
   // Auth

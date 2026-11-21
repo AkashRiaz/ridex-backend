@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import httpStatus from "http-status";
+import { getAuditActor } from "../../utils/auditLogger";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import { VehicleModelService } from "./vehicleModel.service";
@@ -14,6 +15,7 @@ const createVehicleModel = catchAsync(async (req: Request, res: Response) => {
   const result = await VehicleModelService.createVehicleModel(
     req.body,
     getImageFile(req),
+    getAuditActor(req),
   );
 
   sendResponse(res, {
@@ -61,6 +63,7 @@ const updateVehicleModel = catchAsync(async (req: Request, res: Response) => {
     id as string,
     req.body,
     getImageFile(req),
+    getAuditActor(req),
   );
 
   sendResponse(res, {
@@ -74,7 +77,7 @@ const updateVehicleModel = catchAsync(async (req: Request, res: Response) => {
 const deleteVehicleModel = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const result = await VehicleModelService.deleteVehicleModel(id as string);
+  const result = await VehicleModelService.deleteVehicleModel(id as string, getAuditActor(req));
 
   sendResponse(res, {
     success: true,

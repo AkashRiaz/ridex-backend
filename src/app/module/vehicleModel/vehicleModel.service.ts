@@ -1,5 +1,6 @@
 import httpStatus from "http-status";
 import { Prisma } from "../../../generated/prisma/client";
+import { AuditAction } from "../../../generated/prisma/enums";
 import { VehicleModelWhereInput } from "../../../generated/prisma/models";
 import { config } from "../../config";
 import { validateSpecs } from "../../helper/buildDynamicSpecSchema";
@@ -9,6 +10,7 @@ import { queryBuilder } from "../../helper/queryBuilder";
 import { IQuery } from "../../interfaces";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../utils/AppError";
+import { buildAuditDiff, createAuditLog, TAuditActor } from "../../utils/auditLogger";
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
@@ -112,6 +114,7 @@ const assertNameAvailable = async (
 const createVehicleModel = async (
   payload: ICreateVehicleModelPayload,
   image: Express.Multer.File | null,
+  actor: TAuditActor,
 ) => {
   const attributes = await assertBrandAndType(payload.brandId, payload.vehicleTypeId);
 
@@ -131,7 +134,7 @@ const createVehicleModel = async (
 
   const imageResult = await uploadImage(image);
 
-  return prisma.vehicleModel.create({
+  const vehicleModel = await prisma.vehicleModel.create({
     data: {
       brandId: payload.brandId,
       vehicleTypeId: payload.vehicleTypeId,
@@ -148,6 +151,22 @@ const createVehicleModel = async (
     },
     include: listInclude,
   });
+
+  await createAuditLog({
+    ...actor,
+    action: AuditAction.CREATE,
+    entity: "VehicleModel",
+    entityId: vehicleModel.id,
+    newData: {
+      name: vehicleModel.name,
+      slug: vehicleModel.slug,
+      brandId: vehicleModel.brandId,
+      vehicleTypeId: vehicleModel.vehicleTypeId,
+      isActive: vehicleModel.isActive,
+    },
+  });
+
+  return vehicleModel;
 };
 
 const getAllVehicleModels = async (query: IQuery) => {
@@ -257,6 +276,7 @@ const updateVehicleModel = async (
   id: string,
   payload: IUpdateVehicleModelPayload,
   image: Express.Multer.File | null,
+  actor: TAuditActor,
 ) => {
   const existingModel = await prisma.vehicleModel.findUnique({ where: { id } });
 
@@ -322,10 +342,27 @@ const updateVehicleModel = async (
     await deleteFromCloudinary(existingModel.imagePublicId);
   }
 
+  const diff = buildAuditDiff(existingModel, {
+    ...rest,
+    defaultSpecs,
+    imageUrl: imageResult?.secure_url,
+  });
+
+  if (diff.changed) {
+    await createAuditLog({
+      ...actor,
+      action: AuditAction.UPDATE,
+      entity: "VehicleModel",
+      entityId: id,
+      oldData: diff.oldData,
+      newData: diff.newData,
+    });
+  }
+
   return vehicleModel;
 };
 
-const deleteVehicleModel = async (id: string) => {
+const deleteVehicleModel = async (id: string, actor: TAuditActor) => {
   const vehicleModel = await prisma.vehicleModel.findUnique({ where: { id } });
 
   if (!vehicleModel) {
@@ -344,6 +381,14 @@ const deleteVehicleModel = async (id: string) => {
   const deletedModel = await prisma.vehicleModel.delete({ where: { id } });
 
   await deleteFromCloudinary(vehicleModel.imagePublicId);
+
+  await createAuditLog({
+    ...actor,
+    action: AuditAction.DELETE,
+    entity: "VehicleModel",
+    entityId: id,
+    oldData: { name: vehicleModel.name, slug: vehicleModel.slug, brandId: vehicleModel.brandId },
+  });
 
   return deletedModel;
 };

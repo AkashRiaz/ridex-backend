@@ -1,6 +1,7 @@
 import httpStatus from "http-status";
 import { Prisma } from "../../../generated/prisma/client";
 import {
+  AuditAction,
   ListingStatus,
   ReportStatus,
   ReportTargetType,
@@ -14,6 +15,7 @@ import { prisma } from "../../lib/prisma";
 import { redisClient } from "../../lib/redis";
 import { RequestUser } from "../../middleware/checkAuth";
 import { AppError } from "../../utils/AppError";
+import { createAuditLog } from "../../utils/auditLogger";
 import { IRequestMeta } from "../auth/auth.interface";
 import { ListingService } from "../listing/listing.service";
 import { ReviewService } from "../review/review.service";
@@ -472,6 +474,25 @@ const updateReport = async (
 
   await prisma.$transaction(async (tx) => {
     await tx.report.update({ where: { id }, data: resolution });
+
+    await createAuditLog(
+      {
+        userId: staff.userId,
+        action: AuditAction.UPDATE,
+        entity: "Report",
+        entityId: id,
+        oldData: { status: report.status },
+        newData: {
+          status: payload.status,
+          targetType: report.targetType,
+          actionTaken: action === "NONE" ? null : action,
+          resolutionNote: note || null,
+          closedReports: closedReports.length,
+        },
+        ...meta,
+      },
+      tx,
+    );
 
     // one decision closes every open report about the same target
     if (payload.status === ReportStatus.RESOLVED) {

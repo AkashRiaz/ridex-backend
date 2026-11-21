@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import httpStatus from "http-status";
+import { getAuditActor } from "../../utils/auditLogger";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import { BrandService } from "./brand.service";
@@ -11,7 +12,7 @@ const getLogoFile = (req: Request) => {
 };
 
 const createBrand = catchAsync(async (req: Request, res: Response) => {
-  const result = await BrandService.createBrand(req.body, getLogoFile(req));
+  const result = await BrandService.createBrand(req.body, getLogoFile(req), getAuditActor(req));
 
   sendResponse(res, {
     success: true,
@@ -53,6 +54,7 @@ const updateBrand = catchAsync(async (req: Request, res: Response) => {
     id as string,
     req.body,
     getLogoFile(req),
+    getAuditActor(req),
   );
 
   sendResponse(res, {
@@ -66,7 +68,7 @@ const updateBrand = catchAsync(async (req: Request, res: Response) => {
 const deleteBrand = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const result = await BrandService.deleteBrand(id as string);
+  const result = await BrandService.deleteBrand(id as string, getAuditActor(req));
 
   sendResponse(res, {
     success: true,

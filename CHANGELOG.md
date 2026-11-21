@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.7.0] — Phase 1 · Part 6: role dashboards + audit log (2026-11-21)
+
+### Added
+- **dashboard module** (`/dashboard`): one overview per role. Every overview takes `?range=7d|30d|90d` (default 30d) and returns daily series with one point per local day (0 for empty days).
+  - `GET /admin/overview` (super admin, admin):
+    - Users by role and status, listings by status, open reports, pending verifications and chat totals, each with change vs the previous period.
+    - Daily new users, listings submitted and approved, reports and new chats.
+    - Top brands, live listings by division, average submit-to-approve time, and recent audit activity.
+  - `GET /moderator/overview` (moderator, plus admins):
+    - Queue sizes, plus my approvals, rejections and closed reports in the range.
+    - Open reports by reason and type, and the 5 oldest items in each queue. Verifications are shown to admins only.
+  - `GET /seller/overview` (seller, dealer):
+    - Listings by status, views, saves, chats and unread messages, and the chat-to-sale rate.
+    - Rating and verification status, daily chats, saves and sales.
+    - Top 5 listings, listings expiring within 7 days, and the latest reviews.
+  - `GET /buyer/overview` (buyer, dealer staff, inspector): saved listings (available and unavailable), recently viewed, active chats, my reports, reviews written, verification status, daily activity, latest saved listings and saved listings by brand.
+  - `GET /staff/queue-counts` (staff): pending listings, open reports and pending verifications for the sidebar badges.
+  - The admin and moderator overviews are cached in Redis for `DASHBOARD_CACHE_SECONDS` (default 60). The cache never breaks a request.
+  - Days are bucketed in `TIMEZONE` (default Asia/Dhaka) with parameterised SQL.
+- **auditLog module** (`/audit-logs`, read-only, super admin and admin):
+  - List with search, action, entity, entity ID, user and date filters, plus a list of entities for the filter dropdown.
+  - One entry by ID.
+  - Admins never see entries made by a super admin; a hidden entry returns 404.
+  - Keys containing password, secret, token or otp are returned as `[redacted]`.
+- **Audit helpers** (`utils/auditLogger.ts`): `getAuditActor(req)` and `buildAuditDiff()`, which keeps only the fields that changed.
+- **Config/env**: `TIMEZONE`, `DASHBOARD_CACHE_SECONDS`.
+- **Tests**: range parsing and local-day boundaries (UTC+6), empty-day filling, ratios and change, redaction, admin vs super admin visibility, audit date filters, audit diffs.
+- **Postman**: Dashboard and Audit Logs folders.
+
+### Changed
+- **Audit logging now covers the catalog and report decisions**:
+  - Vehicle types, brands and models: create, update (only the changed fields) and delete. Attribute schema changes are logged in the same transaction.
+  - Report decisions: in review, resolve and dismiss, with the action taken and the number of reports closed.
+- Catalog services take an extra `actor` argument for the audit entry. Behaviour is otherwise unchanged.
+
 ## [0.6.0] — Phase 1 · Part 5: chat + notifications (2026-11-21)
 
 ### Added
