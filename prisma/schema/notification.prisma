@@ -1,0 +1,28 @@
+model Notification {
+  id String @id @default(uuid())
+
+  userId String
+
+  type NotificationType
+
+  category NotificationCategory
+
+  title String
+
+  body String @default("")
+
+  // frontend path to open, e.g. "/listings/yamaha-r15-k3f9"
+  link String?
+
+  data Json?
+
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([createdAt])
+  @@map("notifications")
+}

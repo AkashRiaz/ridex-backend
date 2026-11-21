@@ -1,9 +1,11 @@
 import { config } from "../config";
 import { TAppEvents, appEvents, safeHandler } from "./appEvents";
+import { registerNotificationHandlers } from "./notificationHandlers";
 
 /*
- * Phase 1 · Part 3: log only. Notification, saved-search alert,
- * social auto-post and analytics handlers subscribe here later.
+ * Development log for every event, plus the notification handlers
+ * (Phase 1 · Part 5). Saved-search alert, social auto-post and
+ * analytics handlers subscribe here later.
  */
 export const registerEventHandlers = () => {
   const events: (keyof TAppEvents)[] = [
@@ -14,10 +16,13 @@ export const registerEventHandlers = () => {
     "listing.priceDropped",
     "listing.expired",
     "review.created",
+    "review.replied",
     "report.created",
+    "report.resolved",
     "verification.submitted",
     "verification.approved",
     "verification.rejected",
+    "message.created",
   ];
 
   for (const event of events) {
@@ -30,4 +35,6 @@ export const registerEventHandlers = () => {
       }),
     );
   }
+
+  registerNotificationHandlers();
 };

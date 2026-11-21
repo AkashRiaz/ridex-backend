@@ -22,6 +22,7 @@ export default defineConfig({
       DATABASE_URL: testDatabaseUrl,
       RIDEX_INTEGRATION: process.env.DATABASE_URL_TEST ? "true" : "false",
       JWT_ACCESS_SECRET: "test-access-secret",
+      JWT_SOCKET_SECRET: "test-socket-secret",
       JWT_REFRESH_SECRET: "test-refresh-secret",
       CORS_ORIGINS: "http://localhost:3000",
       // never send real emails or SMS from tests

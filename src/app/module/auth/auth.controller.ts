@@ -165,6 +165,17 @@ const getMe = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getSocketToken = catchAsync(async (req: Request, res: Response) => {
+  const result = await AuthService.getSocketToken(req.user as RequestUser);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Socket token issued",
+    data: result,
+  });
+});
+
 const changePassword = catchAsync(async (req: Request, res: Response) => {
   const { user, accessToken, refreshToken } = await AuthService.changePassword(
     req.user as RequestUser,
@@ -220,6 +231,7 @@ export const AuthController = {
   refreshToken,
   logout,
   getMe,
+  getSocketToken,
   changePassword,
   forgotPassword,
   resetPassword,

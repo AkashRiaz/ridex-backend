@@ -1,0 +1,18 @@
+// A block works both ways: neither user can start a thread or send a message
+model UserBlock {
+  id String @id @default(uuid())
+
+  blockerId String
+
+  blockedId String
+
+  createdAt DateTime @default(now())
+
+  blocker User @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+
+  blocked User @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("user_blocks")
+}

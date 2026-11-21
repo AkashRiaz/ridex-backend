@@ -1,15 +1,20 @@
-import { Server } from "http";
+import { Server, createServer } from "http";
 import app from "./app";
 import { config } from "./app/config";
 import { registerEventHandlers } from "./app/events/registerEventHandlers";
+import { startNotificationEmailWorker } from "./app/jobs/notificationEmail.job";
 import {
+  deleteOldNotifications,
   deleteUnverifiedUsers,
   expireListings,
   purgeVerificationDocuments,
 } from "./app/lib/cron";
 import { isSmtpConfigured, transporter } from "./app/lib/nodemailer";
 import { prisma } from "./app/lib/prisma";
+import { closeQueues } from "./app/lib/queue";
 import { redisClient } from "./app/lib/redis";
+import { closeSocket, initSocket } from "./app/lib/socket";
+import { registerChatSocketHandlers } from "./app/module/chat/chat.socket";
 import { seedSuperAdmin } from "./app/utils/seed";
 
 const PORT = config.port;
@@ -45,11 +50,18 @@ const main = async () => {
     await deleteUnverifiedUsers();
     await expireListings();
     await purgeVerificationDocuments();
+    await deleteOldNotifications();
 
     registerEventHandlers();
 
-    server = app.listen(PORT, () => {
-      console.log(`${config.app_name} server is running on port ${PORT}`);
+    startNotificationEmailWorker();
+    console.log("Notification email worker started.");
+
+    server = createServer(app);
+    initSocket(server, [registerChatSocketHandlers]);
+
+    server.listen(PORT, () => {
+      console.log(`${config.app_name} server (HTTP + Socket.io) is running on port ${PORT}`);
     });
   } catch (error) {
     console.error("Error starting the server:", error);
@@ -60,7 +72,9 @@ const main = async () => {
 const shutdown = async (signal: string) => {
   console.log(`${signal} received. Shutting down gracefully...`);
 
+  await closeSocket().catch(() => null);
   server?.close();
+  await closeQueues().catch(() => null);
   await prisma.$disconnect().catch(() => null);
   if (redisClient.isOpen) {
     await redisClient.quit().catch(() => null);

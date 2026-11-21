@@ -1,0 +1,21 @@
+// A missing row means the category default (notification.utils.ts) applies
+model NotificationPreference {
+  id String @id @default(uuid())
+
+  userId String
+
+  category NotificationCategory
+
+  inApp Boolean @default(true)
+
+  email Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+  @@map("notification_preferences")
+}

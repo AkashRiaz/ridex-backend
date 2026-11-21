@@ -32,6 +32,7 @@ import {
 } from "./auth.interface";
 import {
   assertUserCanAuthenticate,
+  createSocketToken,
   findUserByIdentifier,
   generateAuthTokens,
   otpKeys,
@@ -488,6 +489,19 @@ const getMe = async (user: RequestUser) => {
   return isUserExist;
 };
 
+const getSocketToken = async (user: RequestUser) => {
+  const isUserExist = await prisma.user.findUnique({ where: { id: user.userId } });
+
+  if (!isUserExist) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  return {
+    token: createSocketToken(isUserExist),
+    expiresIn: config.socket_token_expires_in,
+  };
+};
+
 // ============================================
 // Passwords
 // ============================================
@@ -671,6 +685,7 @@ export const AuthService = {
   refreshToken,
   logout,
   getMe,
+  getSocketToken,
   changePassword,
   forgotPassword,
   resetPassword,

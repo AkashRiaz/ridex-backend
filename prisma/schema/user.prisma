@@ -103,6 +103,22 @@ model User {
 
   verificationRequests VerificationRequest[]
 
+  buyerConversations Conversation[] @relation("BuyerConversations")
+
+  sellerConversations Conversation[] @relation("SellerConversations")
+
+  sentMessages Message[] @relation("SentMessages")
+
+  quickReplies QuickReply[]
+
+  blocksMade UserBlock[] @relation("BlocksMade")
+
+  blocksReceived UserBlock[] @relation("BlocksReceived")
+
+  notifications Notification[]
+
+  notificationPreferences NotificationPreference[]
+
   @@index([email])
   @@index([phone])
   @@index([role])

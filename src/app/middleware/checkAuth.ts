@@ -23,6 +23,66 @@ declare global {
   }
 }
 
+/*
+ * Shared by auth() (REST) and the Socket.io handshake (lib/socket.ts):
+ * the token's user must still exist, keep the same role, not be blocked,
+ * and not have changed their password since the token was issued.
+ */
+export const loadAuthUser = async (claims: {
+  userId: string;
+  role?: Role;
+  pwdAt?: number | null;
+}): Promise<RequestUser> => {
+  /*
+   * Look up by id only, so name/email changes
+   * do not invalidate a valid token.
+   */
+  const user = await prisma.user.findUnique({
+    where: {
+      id: claims.userId,
+    },
+  });
+
+  if (!user || user.isDeleted) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      "User not found. Please log in again.",
+    );
+  }
+
+  if (user.role !== claims.role) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      "Your role has changed. Please log in again.",
+    );
+  }
+
+  if (user.status === UserStatus.BLOCKED) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Your account has been blocked. Please contact support.",
+    );
+  }
+
+  /*
+   * Tokens issued before a password change are rejected:
+   * the token's password version must match the user's.
+   */
+  if ((user.passwordChangedAt?.getTime() ?? null) !== (claims.pwdAt ?? null)) {
+    throw new AppError(
+      httpStatus.UNAUTHORIZED,
+      "Password was changed recently. Please log in again.",
+    );
+  }
+
+  return {
+    email: user.email,
+    name: user.name,
+    userId: user.id,
+    role: user.role,
+  };
+};
+
 // auth(Role.ADMIN, Role.SELLER)
 // auth() => any logged-in user
 export const auth = (...requiredRoles: Role[]) => {
@@ -62,54 +122,7 @@ export const auth = (...requiredRoles: Role[]) => {
       );
     }
 
-    /*
-     * Look up by id only, so name/email changes
-     * do not invalidate a valid token.
-     */
-    const user = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-    });
-
-    if (!user || user.isDeleted) {
-      throw new AppError(
-        httpStatus.UNAUTHORIZED,
-        "User not found. Please log in again.",
-      );
-    }
-
-    if (user.role !== role) {
-      throw new AppError(
-        httpStatus.UNAUTHORIZED,
-        "Your role has changed. Please log in again.",
-      );
-    }
-
-    if (user.status === UserStatus.BLOCKED) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        "Your account has been blocked. Please contact support.",
-      );
-    }
-
-    /*
-     * Tokens issued before a password change are rejected:
-     * the token's password version must match the user's.
-     */
-    if ((user.passwordChangedAt?.getTime() ?? null) !== (pwdAt ?? null)) {
-      throw new AppError(
-        httpStatus.UNAUTHORIZED,
-        "Password was changed recently. Please log in again.",
-      );
-    }
-
-    req.user = {
-      email: user.email,
-      name: user.name,
-      userId: user.id,
-      role: user.role,
-    };
+    req.user = await loadAuthUser({ userId, role, pwdAt });
 
     next();
   });

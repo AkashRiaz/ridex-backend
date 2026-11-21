@@ -50,7 +50,7 @@ export const evaluateReviewEligibility = (input: {
     return {
       allowed: false,
       code: "NO_INTERACTION",
-      reason: "You can review a seller after you have viewed or saved their listing",
+      reason: "You can review a seller after you have viewed, saved or asked about their listing",
     };
   }
 
@@ -58,12 +58,11 @@ export const evaluateReviewEligibility = (input: {
 };
 
 /*
- * "Interaction" with the seller about this listing.
- * Until chat exists: the reviewer viewed or saved the listing.
- * Chat (Phase 1 · Part 5) replaces this with "has a conversation about this listing".
+ * "Interaction" with the seller about this listing: the reviewer viewed it,
+ * saved it, or has a conversation with the seller about it.
  */
 export const hasReviewInteraction = async (reviewerId: string, listingId: string) => {
-  const [viewed, saved] = await Promise.all([
+  const [viewed, saved, conversation] = await Promise.all([
     prisma.recentlyViewed.findUnique({
       where: { userId_listingId: { userId: reviewerId, listingId } },
       select: { id: true },
@@ -72,9 +71,13 @@ export const hasReviewInteraction = async (reviewerId: string, listingId: string
       where: { userId_listingId: { userId: reviewerId, listingId } },
       select: { id: true },
     }),
+    prisma.conversation.findUnique({
+      where: { listingId_buyerId: { listingId, buyerId: reviewerId } },
+      select: { id: true },
+    }),
   ]);
 
-  return Boolean(viewed || saved);
+  return Boolean(viewed || saved || conversation);
 };
 
 export const canReview = async (reviewer: TReviewer, listing: TReviewListing) => {

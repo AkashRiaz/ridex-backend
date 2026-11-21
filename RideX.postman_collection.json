@@ -56,6 +56,26 @@
     {
       "key": "verificationId",
       "value": ""
+    },
+    {
+      "key": "conversationId",
+      "value": ""
+    },
+    {
+      "key": "messageId",
+      "value": ""
+    },
+    {
+      "key": "quickReplyId",
+      "value": ""
+    },
+    {
+      "key": "notificationId",
+      "value": ""
+    },
+    {
+      "key": "blockedUserId",
+      "value": ""
     }
   ],
   "auth": {
@@ -274,6 +294,14 @@
           "request": {
             "method": "GET",
             "url": "{{apiUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "Socket Token",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/socket-token",
+            "description": "Signed in. Returns `{ token, expiresIn }`: a short-lived (SOCKET_TOKEN_EXPIRES_IN, default 5m) JWT for the Socket.io handshake only. It is signed with JWT_SOCKET_SECRET, so REST endpoints reject it. Fetch a new one on every (re)connect."
           }
         },
         {
@@ -1223,7 +1251,25 @@
               "mode": "raw",
               "raw": "{\n  \"targetType\": \"LISTING\",\n  \"targetId\": \"{{listingId}}\",\n  \"reason\": \"WRONG_INFO\",\n  \"details\": \"Mileage looks wrong\"\n}"
             },
-            "description": "Signed in. targetType: LISTING | USER | REVIEW | MESSAGE (MESSAGE arrives with chat). reason: SCAM | FAKE_LISTING | WRONG_INFO | DUPLICATE | ALREADY_SOLD | OFFENSIVE | HARASSMENT | SPAM | OTHER. One open report per target; 10 per hour."
+            "description": "Signed in. targetType: LISTING | USER | REVIEW | MESSAGE (participants only, never your own or a system message). reason: SCAM | FAKE_LISTING | WRONG_INFO | DUPLICATE | ALREADY_SOLD | OFFENSIVE | HARASSMENT | SPAM | OTHER. One open report per target; 10 per hour."
+          }
+        },
+        {
+          "name": "Report Message",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/reports",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetType\": \"MESSAGE\",\n  \"targetId\": \"{{messageId}}\",\n  \"reason\": \"HARASSMENT\",\n  \"details\": \"Abusive message\"\n}"
+            },
+            "description": "Signed in, conversation participant. Staff see the message plus the 5 before it in GET /reports/:id (`messageContext`). Admins can resolve with BLOCK_USER to block the sender."
           }
         },
         {
@@ -1386,6 +1432,308 @@
               "raw": "{\n  \"status\": \"APPROVED\"\n}"
             },
             "description": "Admin, super admin. Rejecting needs `reason`. Approving a dealer also activates a PENDING dealer account."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Conversations",
+      "description": "**Socket.io** runs on the API origin ({{baseUrl}}). Connect with `io(baseUrl, { auth: { token } })` using POST /auth/socket-token. Every user joins their own room; the server only emits to rooms.\n\nClient → server\n- `message:send` `{ conversationId, body?, quickReplyKey?, clientId? }` ack → `{ success, statusCode, data | message }`\n- `typing:start` / `typing:stop` `{ conversationId }` (throttled to one per 2s)\n- `conversation:read` `{ conversationId }` ack → `{ success, data }`\n\nServer → client\n- `message:new` `{ conversation, message }`: `conversation` is the recipient's own view (unreadCount, side, counterpart)\n- `conversation:read` `{ conversationId, readerId, readAt }`: messages with createdAt ≤ readAt are seen\n- `typing` `{ conversationId, userId, isTyping }`\n- `chat:unread` `{ total, conversations }`\n- `block:changed` `{ userId, blockedByMe? | blockedMe? }`\n- `notification:new` (notification row) · `notification:unread` `{ total }`\n- `auth:error` `{ message }`, sent before the server disconnects a socket whose user was blocked or signed out\n\nChat is limited to BUYER, SELLER, DEALER, DEALER_STAFF and INSPECTOR. Sending (socket + REST) is limited by CHAT_MESSAGE_RATE_LIMIT per minute; new conversations by CHAT_NEW_CONVERSATION_LIMIT per hour. `clientId` (uuid) makes a retried send idempotent.",
+      "item": [
+        {
+          "name": "Start Conversation",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/conversations",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"quickReplyKey\": \"IS_AVAILABLE\",\n  \"clientId\": \"{{$guid}}\"\n}"
+            },
+            "description": "Chat roles. One thread per buyer per listing: 201 when created, 200 when the existing thread is reused (the message is added to it). Needs `body` or a buyer `quickReplyKey`. New threads only for APPROVED listings, never your own, never when either side has blocked the other."
+          }
+        },
+        {
+          "name": "My Conversations",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/conversations?side=buying&page=1&limit=20",
+            "description": "Chat roles. Filters: `side=buying|selling` (default both), `archived=true`, `unread=true`, `searchTerm` (listing title or the other person's name). Sorted by last message. Page meta."
+          }
+        },
+        {
+          "name": "Unread Count",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/conversations/unread-count",
+            "description": "Chat roles. `{ total, conversations }` for badges."
+          }
+        },
+        {
+          "name": "Get Conversation",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/conversations/{{conversationId}}",
+            "description": "Participants only (404 otherwise). Listing card, counterpart with badges and `isOnline`, read markers, `block`, `canReply`, `readOnlyCode` (BLOCKED_BY_ME | BLOCKED_ME | COUNTERPART_UNAVAILABLE | LISTING_REMOVED) and `listingNotice` (sold / expired / in review)."
+          }
+        },
+        {
+          "name": "Get Messages",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/conversations/{{conversationId}}/messages?limit=30",
+            "description": "Participants only. Cursor pagination: oldest first in `data`; pass `before={{meta.nextCursor}}` for older messages. `meta: { limit, hasMore, nextCursor }` (max limit 50)."
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/conversations/{{conversationId}}/messages",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Can I see it on Saturday?\",\n  \"clientId\": \"{{$guid}}\"\n}"
+            },
+            "description": "Participants. REST fallback for the `message:send` socket event (same rules). Max 2000 characters; `quickReplyKey` must belong to your side."
+          }
+        },
+        {
+          "name": "Send Photos",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/conversations/{{conversationId}}/images",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "data",
+                  "type": "text",
+                  "value": "{\"clientIds\":[]}"
+                }
+              ]
+            },
+            "description": "Participants. multipart `images` (up to 4; JPG, PNG, WEBP or AVIF) plus optional `data` JSON with `clientIds[i]` for file i. Each photo becomes one IMAGE message. Uploads are all-or-nothing."
+          }
+        },
+        {
+          "name": "Mark As Read",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/conversations/{{conversationId}}/read",
+            "description": "Participants. Clears your unread count and sends a `conversation:read` receipt to the other side."
+          }
+        },
+        {
+          "name": "Archive Conversation",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/conversations/{{conversationId}}/archive",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"archived\": true\n}"
+            },
+            "description": "Participants. Archive is per side; a new message from the other side moves the thread back to the inbox."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quick Replies",
+      "item": [
+        {
+          "name": "Get Quick Replies",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/quick-replies",
+            "description": "Signed in. `builtIn.buyer`, `builtIn.seller` (send by `quickReplyKey`) and your `custom` replies (send as `body`)."
+          }
+        },
+        {
+          "name": "Create Quick Reply",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/quick-replies",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"I can deliver within Dhaka.\"\n}"
+            },
+            "description": "Signed in. Up to 10, max 300 characters, no duplicates."
+          }
+        },
+        {
+          "name": "Update Quick Reply",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/quick-replies/{{quickReplyId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Delivery within Dhaka is free.\",\n  \"sortOrder\": 0\n}"
+            },
+            "description": "Owner only."
+          }
+        },
+        {
+          "name": "Delete Quick Reply",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/quick-replies/{{quickReplyId}}",
+            "description": "Owner only."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Blocks",
+      "item": [
+        {
+          "name": "My Blocked Users",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/blocks?page=1&limit=20",
+            "description": "Signed in."
+          }
+        },
+        {
+          "name": "Block User",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/blocks/{{blockedUserId}}",
+            "description": "Signed in. Works both ways: neither user can start a thread or send a message. Idempotent. Both users get `block:changed`. To report as well, POST /reports with targetType USER or MESSAGE."
+          }
+        },
+        {
+          "name": "Unblock User",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/blocks/{{blockedUserId}}",
+            "description": "Signed in."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "description": "In-app notifications are pushed live over Socket.io (`notification:new`, `notification:unread`). Email copies are queued (BullMQ) and respect preferences. Categories: MESSAGES (unread-message email digest, sent CHAT_EMAIL_DELAY_MINUTES after a message if still unread and the user is offline), LISTINGS, PRICE_ALERTS, REVIEWS, ACCOUNT (always on).",
+      "item": [
+        {
+          "name": "My Notifications",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/notifications?status=unread&page=1&limit=20",
+            "description": "Signed in. `status=unread`, `category=`. Meta adds `unreadCount`."
+          }
+        },
+        {
+          "name": "Unread Count",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/notifications/unread-count",
+            "description": "Signed in. `{ total }`."
+          }
+        },
+        {
+          "name": "Mark As Read",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/notifications/{{notificationId}}/read",
+            "description": "Owner only."
+          }
+        },
+        {
+          "name": "Mark All As Read",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/notifications/read-all",
+            "description": "Signed in."
+          }
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/notifications/{{notificationId}}",
+            "description": "Owner only."
+          }
+        },
+        {
+          "name": "Get Preferences",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/notifications/preferences",
+            "description": "Signed in. One row per category with `inApp`, `email`, `lockedInApp`, `lockedEmail`."
+          }
+        },
+        {
+          "name": "Update Preferences",
+          "request": {
+            "method": "PUT",
+            "url": "{{apiUrl}}/notifications/preferences",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preferences\": [\n    {\n      \"category\": \"PRICE_ALERTS\",\n      \"email\": false\n    },\n    {\n      \"category\": \"MESSAGES\",\n      \"email\": true\n    }\n  ]\n}"
+            },
+            "description": "Signed in. Turning off a locked channel (ACCOUNT, in-app MESSAGES) returns 400."
+          }
+        },
+        {
+          "name": "Unsubscribe (email link)",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/notifications/unsubscribe",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<token from the email footer link>\"\n}"
+            },
+            "description": "Public. The frontend /unsubscribe page posts the signed token from the email footer. POST (not GET) so mail scanners that prefetch links cannot unsubscribe anyone.",
+            "auth": {
+              "type": "noauth"
+            }
           }
         }
       ]

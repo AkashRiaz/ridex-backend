@@ -73,6 +73,8 @@ router.post("/logout", AuthController.logout);
 
 router.get("/me", auth(), AuthController.getMe);
 
+router.post("/socket-token", auth(), AuthController.getSocketToken);
+
 router.post(
   "/change-password",
   auth(),

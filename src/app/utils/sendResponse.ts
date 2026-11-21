@@ -1,13 +1,22 @@
 import { Response } from "express";
 
 // standard pagination meta; modules may add extras (e.g. statusCounts)
-type TMeta = {
+type TPageMeta = {
   page: number;
   limit: number;
   total: number;
   totalPages: number;
   [key: string]: unknown;
 };
+
+// cursor pagination (chat messages): page numbers break while new rows keep arriving
+type TCursorMeta = {
+  limit: number;
+  hasMore: boolean;
+  nextCursor: string | null;
+};
+
+type TMeta = TPageMeta | TCursorMeta;
 
 type TResponseData<T> = {
   success: boolean;

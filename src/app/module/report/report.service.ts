@@ -21,6 +21,7 @@ import { UserService } from "../user/user.service";
 import { ICreateReportPayload, IUpdateReportPayload } from "./report.interface";
 import {
   ACTIVE_REPORT_STATUSES,
+  MESSAGE_CONTEXT_SIZE,
   REPORTS_PER_HOUR,
   assertActionAllowed,
   sortByPriority,
@@ -54,6 +55,17 @@ const reportInclude = {
       isHidden: true,
       reviewer: { select: { id: true, name: true } },
       seller: { select: { id: true, name: true } },
+    },
+  },
+  message: {
+    select: {
+      id: true,
+      type: true,
+      body: true,
+      imageUrl: true,
+      createdAt: true,
+      conversationId: true,
+      sender: { select: { id: true, name: true, email: true, role: true, status: true, isDeleted: true } },
     },
   },
 } satisfies Prisma.ReportInclude;
@@ -109,8 +121,28 @@ const assertReportableTarget = async (reporterId: string, payload: ICreateReport
       return;
     }
 
-    default:
-      throw new AppError(httpStatus.BAD_REQUEST, "Reporting messages will be available with chat");
+    default: {
+      // only a participant can report a message, and never their own
+      const message = await prisma.message.findUnique({
+        where: { id: payload.targetId },
+        select: {
+          senderId: true,
+          conversation: { select: { buyerId: true, sellerId: true } },
+        },
+      });
+
+      const isParticipant =
+        message?.conversation.buyerId === reporterId || message?.conversation.sellerId === reporterId;
+
+      if (!message || !isParticipant) throw new AppError(httpStatus.NOT_FOUND, "Message not found");
+      if (!message.senderId) {
+        throw new AppError(httpStatus.BAD_REQUEST, "System messages cannot be reported");
+      }
+      if (message.senderId === reporterId) {
+        throw new AppError(httpStatus.BAD_REQUEST, "You cannot report your own message");
+      }
+      return;
+    }
   }
 };
 
@@ -202,6 +234,7 @@ const getMyReports = async (userId: string, query: IQuery) => {
         listing: { select: { id: true, title: true, slug: true } },
         reportedUser: { select: { id: true, name: true } },
         review: { select: { id: true, rating: true } },
+        message: { select: { id: true, body: true, type: true } },
       },
     }),
     prisma.report.count({ where }),
@@ -325,7 +358,32 @@ const getReportById = async (id: string) => {
     },
   });
 
-  return { ...report, targetId: targetIdOf(report), otherReports };
+  /*
+   * Message reports: the reported message plus the few before it.
+   * This is the only way staff can read a conversation.
+   */
+  const messageContext = report.message
+    ? (
+        await prisma.message.findMany({
+          where: {
+            conversationId: report.message.conversationId,
+            createdAt: { lte: report.message.createdAt },
+          },
+          orderBy: { createdAt: "desc" },
+          take: MESSAGE_CONTEXT_SIZE + 1,
+          select: {
+            id: true,
+            type: true,
+            body: true,
+            imageUrl: true,
+            createdAt: true,
+            sender: { select: { id: true, name: true } },
+          },
+        })
+      ).reverse()
+    : [];
+
+  return { ...report, targetId: targetIdOf(report), otherReports, messageContext };
 };
 
 // ============================================
@@ -373,8 +431,9 @@ const updateReport = async (
     }
 
     if (action === "BLOCK_USER") {
-      const userId = report.reportedUser?.id ?? report.listing?.sellerId;
-      const status = report.reportedUser?.status ?? report.listing?.seller.status;
+      const userId = report.reportedUser?.id ?? report.listing?.sellerId ?? report.message?.sender?.id;
+      const status =
+        report.reportedUser?.status ?? report.listing?.seller.status ?? report.message?.sender?.status;
 
       if (userId && status !== UserStatus.BLOCKED) {
         await UserService.updateUserStatus(staff, userId, { status: "BLOCKED", reason: note }, meta);
@@ -396,6 +455,21 @@ const updateReport = async (
     }),
   };
 
+  // every reporter whose report this decision closes hears back
+  const closedReports =
+    payload.status === ReportStatus.RESOLVED
+      ? await prisma.report.findMany({
+          where: {
+            targetType: report.targetType,
+            status: { in: ACTIVE_REPORT_STATUSES },
+            ...targetColumns(report.targetType, targetIdOf(report)),
+          },
+          select: { id: true, reporterId: true },
+        })
+      : payload.status === ReportStatus.DISMISSED
+        ? [{ id: report.id, reporterId: report.reporterId }]
+        : [];
+
   await prisma.$transaction(async (tx) => {
     await tx.report.update({ where: { id }, data: resolution });
 
@@ -412,6 +486,21 @@ const updateReport = async (
       });
     }
   });
+
+  // Side effects AFTER commit
+  if (payload.status === ReportStatus.RESOLVED || payload.status === ReportStatus.DISMISSED) {
+    const closedStatus = payload.status;
+
+    for (const closed of closedReports) {
+      appEvents.emit("report.resolved", {
+        reportId: closed.id,
+        reporterId: closed.reporterId,
+        targetType: report.targetType,
+        status: closedStatus,
+        actionTaken: action === "NONE" ? null : action,
+      });
+    }
+  }
 
   return getReportById(id);
 };

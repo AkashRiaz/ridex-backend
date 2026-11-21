@@ -8,6 +8,7 @@ import { config } from "../../config";
 import { normalizePhone } from "../../helper/normalizePhone";
 import { prisma } from "../../lib/prisma";
 import { redisClient } from "../../lib/redis";
+import { SOCKET_TOKEN_TYPE } from "../../lib/socket";
 import { AppError } from "../../utils/AppError";
 import { hashToken } from "../../utils/hashToken";
 import { jwtUtils } from "../../utils/jwt";
@@ -214,6 +215,17 @@ export const generateAuthTokens = async (
 
   return { accessToken, refreshToken };
 };
+
+/*
+ * Short-lived token for the Socket.io handshake only. Signed with
+ * JWT_SOCKET_SECRET, so REST auth() never accepts it.
+ */
+export const createSocketToken = (user: TUser) =>
+  jwtUtils.createToken(
+    { ...createJwtPayload(user), typ: SOCKET_TOKEN_TYPE },
+    config.jwt_socket_secret,
+    config.socket_token_expires_in as SignOptions,
+  );
 
 export const revokeAllUserRefreshTokens = (
   userId: string,

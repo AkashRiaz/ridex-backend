@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.6.0] — Phase 1 · Part 5: chat + notifications (2026-11-21)
+
+### Added
+- **Migration `chat_notifications`**:
+  - New tables: `Conversation`, `Message`, `QuickReply`, `UserBlock`, `Notification` and `NotificationPreference`.
+  - New enums: `MessageType`, `NotificationCategory` and `NotificationType`.
+  - `Report.messageId` is now a real relation to `Message`.
+- **Socket.io** (`lib/socket.ts`), on the same HTTP server and CORS whitelist as the API:
+  - The browser connects with a short-lived socket token from `POST /auth/socket-token`, signed with the new `JWT_SOCKET_SECRET`. REST `auth()` never accepts it, and the httpOnly access token never reaches browser JavaScript.
+  - The handshake runs the same user checks as `auth()`. Writes re-check the user and disconnect the socket if they were blocked or signed out.
+  - Each user has a `user:<id>` room, and online status comes from the room size.
+- **BullMQ** (`lib/queue.ts`), on the existing node-redis client (no ioredis):
+  - A `notification-email` queue with 3 retries and exponential backoff.
+  - The worker runs in the API process (`jobs/notificationEmail.job.ts`).
+- **chat module** (`/conversations`, for buyer, seller, dealer, dealer staff and inspector):
+  - One thread per buyer per listing. New threads can only be started on approved listings, never your own, and never when either side has blocked the other.
+  - Threads stay open when a listing is sold, expired or back in review. They become read-only when the listing is taken down or deleted, or when the other account is gone.
+  - Text messages over the socket (`message:send` with an ack) or REST, both through the same service. A client `clientId` makes retries idempotent.
+  - Photo messages: up to 4 per send, images only, all-or-nothing upload, one message per photo.
+  - Typing indicators (throttled), read receipts (`conversation:read`), and unread counters per side, updated in the same transaction as the message.
+  - Per-side archive. A new message moves the thread back to the inbox.
+  - Cursor pagination for messages: `meta: { limit, hasMore, nextCursor }`. `sendResponse` accepts this meta shape.
+  - Rate limits in Redis: `CHAT_MESSAGE_RATE_LIMIT` per minute and `CHAT_NEW_CONVERSATION_LIMIT` per hour.
+  - When a listing is marked sold, a SYSTEM message is posted in its threads.
+- **quickReply module**:
+  - Built-in buyer and seller replies, sent by key and resolved on the server.
+  - Up to 10 custom replies per user.
+- **userBlock module** (`/blocks`): block and unblock (both directions) and a list of blocked users. Both users get a `block:changed` socket event.
+- **notification module**:
+  - In-app notifications pushed live (`notification:new`, `notification:unread`), plus list, unread count, mark read, mark all read and delete.
+  - Preferences per category and channel. ACCOUNT and in-app MESSAGES are always on.
+  - One-click email unsubscribe with a signed token (`POST /notifications/unsubscribe`).
+  - Domain events trigger notifications:
+    - The seller hears when a listing is approved, rejected or expired.
+    - Users who saved a listing hear about price drops and sales.
+    - Sellers hear about new reviews; reviewers hear about replies.
+    - Reporters hear when their report is resolved or dismissed.
+    - Users hear about verification decisions.
+  - Unread-message email digest: a delayed job per conversation and recipient (`CHAT_EMAIL_DELAY_MINUTES`). It is sent only if the messages are still unread, the user is offline and email is on, at most once an hour.
+- **Reports for messages**: participants can report a message (not their own, and not system messages). Staff see it with the 5 messages before it. Resolving with `BLOCK_USER` blocks the sender.
+- **Events**: `review.replied`, `report.resolved` (one per closed report) and `message.created`.
+- **Email templates**: `notification` and `unread-messages`.
+- **Cron**: read notifications are deleted daily at 04:00, after `NOTIFICATION_RETENTION_DAYS` (default 90).
+- **Seed**: demo conversations between the demo buyer and the demo seller and dealer, plus sample notifications.
+- **Helpers**: `utils/redisRateLimit.ts`, `helper/dashboardPath.ts` (role → dashboard path for links) and `helper/formatPrice.ts`.
+- **Config/env**: `JWT_SOCKET_SECRET`, `SOCKET_TOKEN_EXPIRES_IN`, `CHAT_MESSAGE_RATE_LIMIT`, `CHAT_NEW_CONVERSATION_LIMIT`, `CHAT_EMAIL_DELAY_MINUTES`, `NOTIFICATION_RETENTION_DAYS`, `CURRENCY` and `CURRENCY_LOCALE`.
+- **Tests**:
+  - Chat: start and reply rules, unread counter updates, message normalisation and validation, quick replies.
+  - Socket tokens: rejected by REST, and the handshake rejects missing, access-type and untyped tokens.
+  - Notifications: preference resolution and locked channels, unsubscribe tokens, digest skip rules.
+  - Reports: message report actions.
+- **Postman**: Conversations (with the socket event reference), Quick Replies, Blocks and Notifications folders, plus Socket Token and Report Message.
+
+### Changed
+- `checkAuth`: the user checks moved into `loadAuthUser()`, which REST and the socket handshake share. Behaviour is unchanged.
+- Review eligibility: a conversation about the listing now also counts as an interaction.
+- `server.ts` uses `http.createServer(app)` for Socket.io, starts the email worker, and closes the sockets and queues on shutdown.
+
 ## [0.5.0] — Phase 1 · Part 4: engagement + trust (2026-11-21)
 
 ### Added

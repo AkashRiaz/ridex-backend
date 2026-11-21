@@ -17,6 +17,9 @@ export const config = {
     .filter(Boolean),
   port: process.env.PORT || "5000",
   node_env: process.env.NODE_ENV || "development",
+  // used in notification and email texts; match NEXT_PUBLIC_CURRENCY / NEXT_PUBLIC_DEFAULT_LOCALE
+  currency: process.env.CURRENCY || "BDT",
+  currency_locale: process.env.CURRENCY_LOCALE || "en-BD",
 
   // ============================================
   // Auth
@@ -32,6 +35,9 @@ export const config = {
   // "lax" for same-site deployments, "none" when frontend and API are on different sites (requires HTTPS)
   cookie_same_site: (process.env.COOKIE_SAME_SITE || "lax") as "lax" | "strict" | "none",
   cookie_domain: process.env.COOKIE_DOMAIN || undefined,
+  // short-lived token the browser uses for the Socket.io handshake (never accepted by REST auth)
+  jwt_socket_secret: process.env.JWT_SOCKET_SECRET!,
+  socket_token_expires_in: process.env.SOCKET_TOKEN_EXPIRES_IN || "5m",
 
   // ============================================
   // OTP
@@ -91,6 +97,24 @@ export const config = {
 
   listing_duration_days: Number(process.env.LISTING_DURATION_DAYS || 60),
   max_listing_images: Number(process.env.MAX_LISTING_IMAGES || 15),
+
+  // ============================================
+  // Chat
+  // ============================================
+
+  // messages per user per minute (socket + REST combined)
+  chat_message_rate_limit: Number(process.env.CHAT_MESSAGE_RATE_LIMIT || 30),
+  // new conversations per user per hour
+  chat_new_conversation_limit: Number(process.env.CHAT_NEW_CONVERSATION_LIMIT || 20),
+  // unread messages are emailed after this delay if still unread and the user is offline
+  chat_email_delay_minutes: Number(process.env.CHAT_EMAIL_DELAY_MINUTES || 10),
+
+  // ============================================
+  // Notifications
+  // ============================================
+
+  // read notifications older than this are deleted by the daily cron
+  notification_retention_days: Number(process.env.NOTIFICATION_RETENTION_DAYS || 90),
 
   // ============================================
   // Super Admin (seeded on boot)

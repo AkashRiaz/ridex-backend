@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { config } from "../config";
 import { ListingService } from "../module/listing/listing.service";
+import { NotificationService } from "../module/notification/notification.service";
 import { VerificationService } from "../module/verification/verification.service";
 import { prisma } from "./prisma";
 
@@ -67,6 +68,23 @@ export const purgeVerificationDocuments = async () => {
       }
     } catch (error) {
       console.error("Error purging verification documents:", error);
+    }
+  });
+};
+
+/*
+ * Daily at 04:00: delete read notifications older than NOTIFICATION_RETENTION_DAYS.
+ */
+export const deleteOldNotifications = async () => {
+  cron.schedule("0 4 * * *", async () => {
+    try {
+      const count = await NotificationService.deleteOldNotifications();
+
+      if (count > 0) {
+        console.log(`Deleted ${count} old notification(s).`);
+      }
+    } catch (error) {
+      console.error("Error deleting old notifications:", error);
     }
   });
 };

@@ -1,0 +1,37 @@
+<%- include("partials/header", { title: unreadCount === 1 ? "You have a new message" : "You have new messages" }) %>
+
+<p style="margin: 0 0 15px; font-size: 16px; line-height: 1.6;">
+  Hello <strong><%= name %></strong>,
+</p>
+
+<p style="margin: 0 0 20px; font-size: 15px; line-height: 1.7; color: #555555;">
+  <strong><%= senderName %></strong> sent you <%= unreadCount === 1 ? "a message" : unreadCount + " messages" %> about
+  <strong><%= listingTitle %></strong>.
+</p>
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 25px; background-color: #faf8f5; border-radius: 8px;">
+  <% messages.forEach(function (message) { %>
+  <tr>
+    <td style="padding: 10px 16px; font-size: 14px; line-height: 1.6; color: #2b2722; border-bottom: 1px solid #f0ece6; white-space: pre-line;"><%= message.text %></td>
+  </tr>
+  <% }) %>
+</table>
+
+<table cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 10px;">
+  <tr>
+    <td align="center" style="border-radius: 8px; background-color: #ea580c;">
+      <a href="<%= ctaUrl %>" style="display: inline-block; padding: 12px 26px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none;">Reply</a>
+    </td>
+  </tr>
+</table>
+
+<hr style="border: 0; border-top: 1px solid #eeeeee; margin: 30px 0;" />
+
+<p style="margin: 0; font-size: 12px; line-height: 1.6; color: #888888;">
+  For your safety, keep conversations and payments on <%= appName %> and never share OTP codes.
+  <% if (unsubscribeUrl) { %>
+  <br /><a href="<%= unsubscribeUrl %>" style="color: #888888;">Stop emailing me about unread messages</a>.
+  <% } %>
+</p>
+
+<%- include("partials/footer") %>

@@ -41,8 +41,8 @@ export const targetKey = (report: TReportTargetColumns & { targetType: ReportTar
  */
 const ACTION_TARGETS: Record<Exclude<TReportAction, "NONE">, ReportTargetType[]> = {
   TAKE_DOWN_LISTING: [ReportTargetType.LISTING],
-  // blocks the reported user, or the seller of the reported listing
-  BLOCK_USER: [ReportTargetType.USER, ReportTargetType.LISTING],
+  // blocks the reported user, the seller of the reported listing, or the sender of the message
+  BLOCK_USER: [ReportTargetType.USER, ReportTargetType.LISTING, ReportTargetType.MESSAGE],
   HIDE_REVIEW: [ReportTargetType.REVIEW],
 };
 
@@ -79,3 +79,6 @@ export const sortByPriority = <T extends { key: string; createdAt: Date }>(
         (openCountByKey.get(second.key) ?? 0) - (openCountByKey.get(first.key) ?? 0) ||
         first.createdAt.getTime() - second.createdAt.getTime(),
     );
+
+// messages shown before the reported one, so staff see the context
+export const MESSAGE_CONTEXT_SIZE = 5;

@@ -3,7 +3,7 @@
  * Idempotent: every step checks before inserting, like seed.ts.
  *
  * Steps are filled in as their modules are built:
- *   Phase 1 → seedVehicleTypes, seedBrandsAndModels, seedSampleListings
+ *   Phase 1 → seedVehicleTypes, seedBrandsAndModels, seedSampleListings, seedDemoConversations
  *   Phase 2 → seedPlans, seedCmsPages
  *   Phase 3 → seedGroups, seedBadges
  */
@@ -12,6 +12,8 @@ import { Prisma } from "../../generated/prisma/client";
 import {
   AuthProvider,
   ListingStatus,
+  NotificationCategory,
+  NotificationType,
   Role,
   UserStatus,
 } from "../../generated/prisma/enums";
@@ -294,6 +296,126 @@ export const seedSampleListings = async () => {
 };
 
 // ============================================
+// Demo Conversations & Notifications (Phase 1 · Part 5)
+// ============================================
+
+type TSeedMessage = { from: "buyer" | "seller"; body: string; minutesAgo: number };
+
+const DEMO_THREADS: { sellerEmail: string; listingIndex: number; messages: TSeedMessage[] }[] = [
+  {
+    sellerEmail: "seller@ridex.demo",
+    listingIndex: 0,
+    messages: [
+      { from: "buyer", body: "Hi, is this still available?", minutesAgo: 180 },
+      { from: "seller", body: "Yes, it's still available.", minutesAgo: 170 },
+      { from: "buyer", body: "Are all the papers up to date? Can I see it this weekend?", minutesAgo: 160 },
+      { from: "seller", body: "All papers are clear. Saturday afternoon works, I'm in Mirpur.", minutesAgo: 20 },
+    ],
+  },
+  {
+    sellerEmail: "dealer@ridex.demo",
+    listingIndex: 0,
+    messages: [
+      { from: "buyer", body: "Can I take a test ride?", minutesAgo: 60 * 26 },
+      { from: "seller", body: "You're welcome to come and see it. Our showroom is open 10am to 8pm.", minutesAgo: 60 * 25 },
+    ],
+  },
+];
+
+export const seedDemoConversations = async () => {
+  const buyer = await prisma.user.findUnique({ where: { email: "buyer@ridex.demo" } });
+
+  if (!buyer) {
+    console.log("Demo buyer missing. Skipping demo conversations.");
+    return;
+  }
+
+  let created = 0;
+
+  for (const thread of DEMO_THREADS) {
+    const seller = await prisma.user.findUnique({ where: { email: thread.sellerEmail } });
+    if (!seller) continue;
+
+    const listing = (
+      await prisma.listing.findMany({
+        where: { sellerId: seller.id, status: ListingStatus.APPROVED, isDeleted: false },
+        orderBy: { createdAt: "asc" },
+        take: thread.listingIndex + 1,
+        select: { id: true },
+      })
+    )[thread.listingIndex];
+
+    if (!listing) continue;
+
+    const exists = await prisma.conversation.findUnique({
+      where: { listingId_buyerId: { listingId: listing.id, buyerId: buyer.id } },
+    });
+
+    if (exists) continue;
+
+    const at = (minutesAgo: number) => new Date(Date.now() - minutesAgo * 60 * 1000);
+    const last = thread.messages[thread.messages.length - 1];
+    // the buyer has read up to their own last message; newer seller replies stay unread
+    const lastBuyerMessage = [...thread.messages].reverse().find((message) => message.from === "buyer");
+    const buyerUnread = thread.messages.filter(
+      (message) => message.from === "seller" && message.minutesAgo < (lastBuyerMessage?.minutesAgo ?? Infinity),
+    ).length;
+
+    await prisma.conversation.create({
+      data: {
+        listingId: listing.id,
+        buyerId: buyer.id,
+        sellerId: seller.id,
+        lastMessageAt: at(last.minutesAgo),
+        lastMessagePreview: last.body.slice(0, 120),
+        lastMessageSenderId: last.from === "buyer" ? buyer.id : seller.id,
+        buyerUnreadCount: buyerUnread,
+        buyerLastReadAt: lastBuyerMessage ? at(lastBuyerMessage.minutesAgo) : null,
+        sellerLastReadAt: at(last.minutesAgo),
+        createdAt: at(thread.messages[0].minutesAgo),
+        messages: {
+          create: thread.messages.map((message) => ({
+            senderId: message.from === "buyer" ? buyer.id : seller.id,
+            body: message.body,
+            createdAt: at(message.minutesAgo),
+          })),
+        },
+      },
+    });
+
+    created++;
+  }
+
+  const hasNotifications = await prisma.notification.count({ where: { userId: buyer.id } });
+
+  if (!hasNotifications) {
+    await prisma.notification.createMany({
+      data: [
+        {
+          userId: buyer.id,
+          type: NotificationType.WISHLIST_PRICE_DROP,
+          category: NotificationCategory.PRICE_ALERTS,
+          title: "Price drop on a saved listing",
+          body: "A bike you saved is now cheaper. Take a look before it's gone.",
+          link: "/buyer-dashboard/saved",
+        },
+        {
+          userId: buyer.id,
+          type: NotificationType.SYSTEM,
+          category: NotificationCategory.ACCOUNT,
+          title: `Welcome to ${config.app_name}`,
+          body: "Message sellers, save listings and get alerts when prices drop.",
+          link: "/listings",
+          readAt: new Date(),
+        },
+      ],
+    });
+  }
+
+  console.log(`Demo conversations created: ${created} (others already existed)`);
+};
+
+// ============================================
 // Runner
 // ============================================
 
@@ -307,6 +429,7 @@ const runSeed = async () => {
     await seedVehicleTypes();
     await seedBrandsAndModels();
     await seedSampleListings();
+    await seedDemoConversations();
 
     console.log("Demo seeding completed successfully.");
   } catch (error) {

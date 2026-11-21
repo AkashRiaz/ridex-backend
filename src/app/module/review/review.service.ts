@@ -294,11 +294,19 @@ const replyToReview = async (requestUser: RequestUser, id: string, payload: IRep
     throw new AppError(httpStatus.CONFLICT, "You have already replied to this review");
   }
 
-  return prisma.review.update({
+  const updated = await prisma.review.update({
     where: { id },
     data: { sellerReply: payload.reply, sellerRepliedAt: new Date() },
     include: reviewInclude,
   });
+
+  appEvents.emit("review.replied", {
+    reviewId: updated.id,
+    sellerId: review.sellerId,
+    reviewerId: review.reviewerId,
+  });
+
+  return updated;
 };
 
 /*

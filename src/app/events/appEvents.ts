@@ -21,10 +21,13 @@ export type TAppEvents = {
   "listing.priceDropped": TListingRef & { oldPrice: number; newPrice: number };
   "listing.expired": TListingRef;
   "review.created": { reviewId: string; sellerId: string; reviewerId: string; rating: number };
+  "review.replied": { reviewId: string; sellerId: string; reviewerId: string };
   "report.created": { reportId: string; targetType: string; targetId: string; reporterId: string };
+  "report.resolved": { reportId: string; reporterId: string; targetType: string; status: "RESOLVED" | "DISMISSED"; actionTaken: string | null };
   "verification.submitted": { requestId: string; userId: string; type: string };
   "verification.approved": { requestId: string; userId: string; type: string };
   "verification.rejected": { requestId: string; userId: string; type: string; reason: string };
+  "message.created": { messageId: string; conversationId: string; senderId: string; recipientId: string };
 };
 
 class TypedEmitter {

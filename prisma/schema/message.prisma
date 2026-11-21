@@ -1,0 +1,34 @@
+model Message {
+  id String @id @default(uuid())
+
+  conversationId String
+
+  // null for SYSTEM messages
+  senderId String?
+
+  type MessageType @default(TEXT)
+
+  body String @default("")
+
+  imageUrl String?
+
+  imagePublicId String?
+
+  // built-in quick reply key, e.g. "IS_AVAILABLE"
+  quickReplyKey String?
+
+  // client-generated id for optimistic sends; a retried send is never duplicated
+  clientId String?
+
+  createdAt DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  sender User? @relation("SentMessages", fields: [senderId], references: [id], onDelete: SetNull)
+
+  reports Report[]
+
+  @@unique([senderId, clientId])
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
