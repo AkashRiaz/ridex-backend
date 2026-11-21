@@ -1,4 +1,4 @@
-/*
+/**
  * One thread per buyer per listing (1:1 buyer ↔ seller).
  * Unread counters and read markers are kept per side, updated in the
  * same transaction as each message.
@@ -46,6 +46,10 @@ model Conversation {
   seller User @relation("SellerConversations", fields: [sellerId], references: [id], onDelete: Cascade)
 
   messages Message[]
+
+  offers Offer[]
+
+  testRides TestRide[]
 
   @@unique([listingId, buyerId])
   @@index([buyerId, lastMessageAt])

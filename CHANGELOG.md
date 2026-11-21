@@ -1,5 +1,81 @@
 # Changelog
 
+## [0.11.0] — Phase 2 · Part 1b: test rides (2026-11-22)
+
+### Added
+- **`testRide` module** (`/api/v1/test-rides`):
+  - **Sellers and dealers:** `GET`/`PUT /availability/me` (the whole week at once), `POST /blocked-dates` and `DELETE /blocked-dates/:id`.
+  - **Public:** `GET /slots?listingId=`.
+  - **Buyers (the chat roles):** `POST /` to book, `GET /` and `GET /:id` to read.
+  - **Status changes:** `PATCH /:id/confirm | decline | cancel | complete | no-show`.
+- **Availability:**
+  - Weekly rules use local wall time (`TIMEZONE`): a day, start/end time, slot length of 15–120 minutes, and capacity 1–10.
+  - Rules without a listing are the seller's defaults. Rules for a listing replace the defaults for that listing.
+  - Blocked dates remove whole days. Overlapping ranges are rejected.
+- **Slots:**
+  - Free slots run from today up to `TEST_RIDE_BOOKING_DAYS` ahead (default 14), starting at least `TEST_RIDE_MIN_LEAD_HOURS` from now (default 2).
+  - Capacity counts every requested or confirmed booking of the seller across all listings.
+  - Buyers never see the capacity numbers.
+- **Booking safety:** the requested time is checked again inside a transaction under an advisory lock on the seller. Two buyers racing for the last place give one 201 and one 409. One upcoming booking per buyer per listing.
+- **Lifecycle:**
+  - The seller confirms (with an optional meeting note) or declines with a reason. Either side can cancel with a reason before the start.
+  - After the start, the seller marks the ride completed or no-show.
+  - A request that isn't confirmed by its start time expires.
+  - Upcoming rides are cancelled by the system when the listing is sold, expires, is rejected or is deleted.
+- **Chat:**
+  - A `TEST_RIDE` card (`Message.testRideId`) is posted on booking, and a SYSTEM notice on each status change. Messages now include the live `testRide` state.
+  - Socket event `testRide:updated`.
+  - The chat list preview and email digest show "🏍️ Test ride request: …".
+- **Jobs:** the `scheduled` queue gains `test-ride-expire` (at the start time) and `test-ride-reminder` (24h and 2h before a confirmed ride; reminders already in the past are skipped). The hourly sweep now also expires unconfirmed requests.
+- **Notifications:** new `TEST_RIDES` category (in-app and email, both optional) for requested, confirmed, declined, cancelled, expired and reminder. Reminders go to both sides.
+- **Seed:** weekly hours for the demo seller (Sat–Thu 10:00–18:00) and dealer (10:00–20:00, 2 at once), one requested ride (buyer ↔ seller) and one confirmed ride (buyer2 ↔ dealer).
+- **Postman:** "Test Rides" folder (13 requests). The slots request saves the first free slot as `slotStartsAt`.
+- **Tests:** `tests/testRide.rules.test.ts` covers time zones (including DST), slot generation, capacity, lead time, the booking window, the action rules and validation.
+
+### Changed
+- Migration `test_rides`: `TestRideAvailability`, `TestRideBlockedDate` and `TestRide` models, the `TestRideStatus` enum, `Message.testRideId`, `MessageType.TEST_RIDE`, the `TEST_RIDES` notification category and its types.
+- Time zone helpers moved from `dashboard.utils.ts` to the shared `helper/timeZone.ts`, adding `localTimeToUtc`, `dayOfWeekOf` and `formatLocalDateTime`. `dashboard.utils.ts` re-exports the two it published, so dashboard behaviour is unchanged.
+- `ChatService.postOfferCard` / `postOfferNotice` are now `postCardMessage` / `postCardNotice` and take an `offerId` or a `testRideId`.
+- The conversation summary's `listing` now includes `isNegotiable`, so the chat composer knows when to offer "Make an offer".
+
+## [0.10.0] — Phase 2 · Part 1a: offers (2026-11-22)
+
+### Added
+- **`offer` module** (`/api/v1/offers`) for buyers, sellers, dealers, dealer staff and inspectors (the chat roles):
+  - `POST /` make an offer · `GET /` my offers · `GET /:id` one offer with the conversation's full history
+  - `POST /:id/counter` · `PATCH /:id/accept` · `PATCH /:id/decline` · `PATCH /:id/withdraw`
+- **Rules:**
+  - Offers are allowed on APPROVED, negotiable listings only, never your own.
+  - The amount must be between `OFFER_MIN_PERCENT` (default 50%) of the price and the asking price.
+  - One open offer per conversation, and no new offer after one was accepted.
+  - Counters must move towards the other side. At most `OFFER_MAX_ROUNDS` (default 5) rounds.
+  - Offers expire after `OFFER_EXPIRY_HOURS` (default 48).
+  - Accepting does not reserve the listing. Other buyers keep their open offers and get a notification.
+- **Race safety:** every change runs in a transaction under an advisory lock on the conversation, and the status update only applies while the offer is still PENDING. Two parallel accepts give one 200 and one 409.
+- **Chat:**
+  - Each offer or counter is an `OFFER` card message (`Message.offerId`). Messages now include the live `offer` state.
+  - Accept, decline, withdraw, expiry and cancellation post a SYSTEM notice with the offer linked.
+  - The socket event `offer:updated` updates cards live.
+  - The conversation preview and email digest show "💰 Offer: BDT …".
+- **Expiry:** a delayed `offer-expire` job runs on the new `scheduled` queue (`jobs/scheduled.job.ts`). An hourly cron sweep (`expireOffers`) catches lost jobs.
+- **Cancellation:** open offers close automatically when their listing is sold, expires, is rejected or is deleted. `deleteListing` now emits a new `listing.deleted` event.
+- **Notifications:** new `OFFERS` category (in-app and email, both optional) with 8 types: received, countered, accepted, declined, withdrawn, expired, cancelled, and "another offer accepted".
+- **Seed:** three demo negotiations: an open offer (buyer ↔ seller), a countered one waiting for buyer2, and an accepted one.
+- **Postman:** "Offers" folder with 7 requests and an `offerId` variable.
+- **Tests:** `tests/offer.rules.test.ts` covers the make/action/counter rules, helpers and validation.
+
+### Changed
+- Migration `offers`: `Offer` model, `OfferStatus` enum, `Message.offerId`, `MessageType.OFFER`, the `OFFERS` notification category and the new notification types.
+- `ChatService` adds `findOrCreateConversation`, `assertCanReplyInConversation`, `postOfferCard` and `postOfferNotice`. Existing endpoints behave as before; message payloads gain `offerId` and `offer`.
+
+## [0.9.1] — Fix notification-email worker TimeoutError loop (2026-11-21)
+
+### Fixed
+- **Worker `TimeoutError` flood:** BullMQ workers now get a Redis connection with the node-redis command timeout turned off (`lib/queue.ts`, `createWorkerConnection`).
+  - **Cause:** node-redis cancels commands after 5s by default, and a worker keeps its connection busy with long blocking waits for jobs. An idle `notification-email` worker therefore logged about 16 `TimeoutError`s per second and retried in a tight loop, which could make the dev server stop responding.
+  - **Result:** in a 70s idle test, errors went from 1,123 to 0, and a job is still picked up within a second.
+  - **Unchanged:** the queue connection and the app Redis client keep the 5s timeout.
+
 ## [0.9.0] — Phase 1 review: conventions, demo seed, docs (2026-11-21)
 
 ### Changed

@@ -1,0 +1,21 @@
+/**
+ * A local calendar day (config.timezone) with no test rides for the seller.
+ */
+model TestRideBlockedDate {
+  id String @id @default(uuid())
+
+  sellerId String
+
+  date DateTime @db.Date
+
+  reason String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  seller User @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@unique([sellerId, date])
+  @@map("test_ride_blocked_dates")
+}

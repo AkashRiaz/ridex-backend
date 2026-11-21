@@ -64,6 +64,7 @@ const conversationInclude = {
       slug: true,
       price: true,
       status: true,
+      isNegotiable: true,
       isDeleted: true,
       sellerId: true,
       images: { where: { isCover: true }, take: 1, select: { url: true } },
@@ -77,6 +78,28 @@ type TConversationRow = Prisma.ConversationGetPayload<{
   include: typeof conversationInclude;
 }>;
 
+// live state of the offer an OFFER card (or offer notice) points to
+export const offerCardSelect = {
+  id: true,
+  amount: true,
+  status: true,
+  proposedById: true,
+  round: true,
+  parentOfferId: true,
+  expiresAt: true,
+  respondedAt: true,
+} satisfies Prisma.OfferSelect;
+
+// live state of the test ride a TEST_RIDE card (or notice) points to
+export const testRideCardSelect = {
+  id: true,
+  status: true,
+  startsAt: true,
+  endsAt: true,
+  sellerNote: true,
+  confirmedAt: true,
+} satisfies Prisma.TestRideSelect;
+
 export const messageSelect = {
   id: true,
   conversationId: true,
@@ -86,8 +109,24 @@ export const messageSelect = {
   imageUrl: true,
   quickReplyKey: true,
   clientId: true,
+  offerId: true,
+  offer: { select: offerCardSelect },
+  testRideId: true,
+  testRide: { select: testRideCardSelect },
   createdAt: true,
 } satisfies Prisma.MessageSelect;
+
+type TMessageRow = Prisma.MessageGetPayload<{ select: typeof messageSelect }>;
+
+// Decimal → number, so cards serialize the same way over REST and Socket.io
+const toMessage = (message: TMessageRow) => ({
+  ...message,
+  offer: message.offer
+    ? { ...message.offer, amount: Number(message.offer.amount) }
+    : null,
+});
+
+export type TChatMessage = ReturnType<typeof toMessage>;
 
 type TParticipantRow = TConversationRow["buyer"];
 
@@ -136,6 +175,7 @@ const toConversationSummary = (
       slug: conversation.listing.slug,
       price: Number(conversation.listing.price),
       status: conversation.listing.status,
+      isNegotiable: conversation.listing.isNegotiable,
       isDeleted: conversation.listing.isDeleted,
       coverImage: conversation.listing.images[0]?.url ?? null,
     },
@@ -263,6 +303,10 @@ type TNewMessage = {
   imagePublicId?: string;
   quickReplyKey?: string | null;
   clientId?: string | null;
+  offerId?: string | null;
+  testRideId?: string | null;
+  // conversation list preview; defaults to buildPreview(type, body)
+  preview?: string;
 };
 
 /*
@@ -297,6 +341,8 @@ const persistMessage = async (
           imagePublicId: input.imagePublicId ?? null,
           quickReplyKey: input.quickReplyKey ?? null,
           clientId: input.clientId ?? null,
+          offerId: input.offerId ?? null,
+          testRideId: input.testRideId ?? null,
           createdAt: at,
         },
         select: messageSelect,
@@ -307,7 +353,7 @@ const persistMessage = async (
         data: buildNewMessageUpdate({
           senderSide: side,
           senderId,
-          preview: buildPreview(input.type, input.body),
+          preview: input.preview ?? buildPreview(input.type, input.body),
           at,
         }),
         include: conversationInclude,
@@ -317,7 +363,7 @@ const persistMessage = async (
     });
 
     return {
-      message,
+      message: toMessage(message),
       conversation: updated,
       senderHadUnread,
       duplicate: false,
@@ -333,7 +379,7 @@ const persistMessage = async (
 
       if (existing) {
         return {
-          message: existing,
+          message: toMessage(existing),
           conversation,
           senderHadUnread: false,
           duplicate: true,
@@ -351,7 +397,7 @@ const persistMessage = async (
  */
 const broadcastMessage = async (
   conversation: TConversationRow,
-  message: Prisma.MessageGetPayload<{ select: typeof messageSelect }>,
+  message: TChatMessage,
   options: { senderHadUnread?: boolean } = {},
 ) => {
   for (const userId of [conversation.buyerId, conversation.sellerId]) {
@@ -438,7 +484,7 @@ const sendMessage = async (
         "This message ID was already used",
       );
     }
-    return duplicate;
+    return toMessage(duplicate);
   }
 
   const { conversation, side } = await findConversationForUser(
@@ -798,7 +844,7 @@ const getMessages = async (
 
   return {
     // oldest first, ready to render
-    data: page.reverse(),
+    data: page.reverse().map(toMessage),
     meta: {
       limit,
       hasMore,
@@ -881,7 +927,7 @@ const postListingSystemMessage = async (listingId: string, body: string) => {
   for (const { id } of conversations) {
     const at = new Date();
 
-    const [message, conversation] = await prisma.$transaction([
+    const [created, conversation] = await prisma.$transaction([
       prisma.message.create({
         data: {
           conversationId: id,
@@ -903,6 +949,8 @@ const postListingSystemMessage = async (listingId: string, body: string) => {
       }),
     ]);
 
+    const message = toMessage(created);
+
     for (const userId of [conversation.buyerId, conversation.sellerId]) {
       emitToUser(userId, "message:new", {
         conversation: toConversationSummary(conversation, userId),
@@ -912,6 +960,229 @@ const postListingSystemMessage = async (listingId: string, body: string) => {
   }
 
   return conversations.length;
+};
+
+/*
+ * Offers (and later test rides): the buyer's thread for a listing, created
+ * on first use with the same rules as startConversation (live listing, not
+ * your own, active seller, no block, hourly new-conversation limit).
+ * An existing thread must still accept replies.
+ */
+const findOrCreateConversation = async (
+  requestUser: RequestUser,
+  listingId: string,
+): Promise<{ conversation: TConversationRow; created: boolean }> => {
+  const existing = await prisma.conversation.findUnique({
+    where: {
+      listingId_buyerId: { listingId, buyerId: requestUser.userId },
+    },
+    include: conversationInclude,
+  });
+
+  if (existing) {
+    await assertCanReply(existing, "buyer");
+    return { conversation: existing, created: false };
+  }
+
+  const listing = await prisma.listing.findUnique({
+    where: { id: listingId },
+    select: {
+      id: true,
+      sellerId: true,
+      status: true,
+      isDeleted: true,
+      seller: { select: { status: true, isDeleted: true } },
+    },
+  });
+
+  const block = listing
+    ? await UserBlockService.getBlockState(requestUser.userId, listing.sellerId)
+    : { blockedByMe: false, blockedMe: false };
+
+  const rule = evaluateStartConversation({
+    userId: requestUser.userId,
+    listing,
+    seller: listing?.seller ?? null,
+    block,
+  });
+
+  if (!rule.allowed || !listing) {
+    const statusCode =
+      rule.allowed || rule.code === "LISTING_NOT_FOUND"
+        ? httpStatus.NOT_FOUND
+        : rule.code === "OWN_LISTING"
+          ? httpStatus.BAD_REQUEST
+          : httpStatus.FORBIDDEN;
+
+    throw new AppError(
+      statusCode,
+      rule.allowed ? "Listing not found" : rule.reason,
+    );
+  }
+
+  const allowed = await consumeRateLimit(
+    chatRateKeys.conversation(requestUser.userId),
+    config.chat_new_conversation_limit,
+    60 * 60,
+  );
+
+  if (!allowed) {
+    throw new AppError(
+      httpStatus.TOO_MANY_REQUESTS,
+      "You have started too many conversations. Please try again in an hour.",
+    );
+  }
+
+  try {
+    const conversation = await prisma.conversation.create({
+      data: {
+        listingId: listing.id,
+        buyerId: requestUser.userId,
+        sellerId: listing.sellerId,
+      },
+      include: conversationInclude,
+    });
+
+    return { conversation, created: true };
+  } catch (error) {
+    // a parallel request created it first
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return findOrCreateConversation(requestUser, listingId);
+    }
+    throw error;
+  }
+};
+
+/*
+ * The caller is a participant and may still reply
+ * (no block, counterpart active, listing not removed).
+ */
+const assertCanReplyInConversation = async (
+  userId: string,
+  conversationId: string,
+) => {
+  const { conversation, side } = await findConversationForUser(
+    userId,
+    conversationId,
+  );
+
+  await assertCanReply(conversation, side);
+
+  return { conversation, side };
+};
+
+// a card or notice points to exactly one offer or one test ride
+type TCardRef = { offerId: string } | { testRideId: string };
+
+const cardRefFields = (ref: TCardRef) => ({
+  offerId: "offerId" in ref ? ref.offerId : null,
+  testRideId: "testRideId" in ref ? ref.testRideId : null,
+});
+
+/*
+ * An OFFER or TEST_RIDE card sent by a participant. It counts as a normal
+ * message (unread count, read receipts, email digest). Called after the
+ * offer / test-ride transaction commits.
+ */
+const postCardMessage = async (
+  input: {
+    type: typeof MessageType.OFFER | typeof MessageType.TEST_RIDE;
+    conversationId: string;
+    senderId: string;
+    body: string;
+    preview: string;
+  } & TCardRef,
+) => {
+  const { conversation, side } = await findConversationForUser(
+    input.senderId,
+    input.conversationId,
+  );
+
+  const result = await persistMessage(conversation, side, input.senderId, {
+    type: input.type,
+    body: normalizeMessageBody(input.body),
+    ...cardRefFields(input),
+    preview: input.preview,
+  });
+
+  await broadcastMessage(result.conversation, result.message, {
+    senderHadUnread: result.senderHadUnread,
+  });
+
+  return result.message;
+};
+
+/*
+ * A SYSTEM notice about an offer or test ride (accepted, cancelled, …).
+ * `unreadForUserId` is the side that should notice it (unread +1, archive
+ * cleared); null leaves both counters alone.
+ */
+const postCardNotice = async (
+  input: {
+    conversationId: string;
+    body: string;
+    unreadForUserId: string | null;
+  } & TCardRef,
+) => {
+  const at = new Date();
+
+  const [created, conversation] = await prisma.$transaction(async (tx) => {
+    const current = await tx.conversation.findUniqueOrThrow({
+      where: { id: input.conversationId },
+      select: { buyerId: true, sellerId: true },
+    });
+
+    const unreadSide = input.unreadForUserId
+      ? sideOf(current, input.unreadForUserId)
+      : null;
+    const unread = unreadSide ? sideFields(unreadSide) : null;
+
+    const message = await tx.message.create({
+      data: {
+        conversationId: input.conversationId,
+        senderId: null,
+        type: MessageType.SYSTEM,
+        body: input.body,
+        ...cardRefFields(input),
+        createdAt: at,
+      },
+      select: messageSelect,
+    });
+
+    const updated = await tx.conversation.update({
+      where: { id: input.conversationId },
+      data: {
+        lastMessageAt: at,
+        lastMessagePreview: buildPreview(MessageType.SYSTEM, input.body),
+        lastMessageSenderId: null,
+        ...(unread && {
+          [unread.unread]: { increment: 1 },
+          [unread.archived]: null,
+        }),
+      },
+      include: conversationInclude,
+    });
+
+    return [message, updated] as const;
+  });
+
+  const message = toMessage(created);
+
+  for (const userId of [conversation.buyerId, conversation.sellerId]) {
+    emitToUser(userId, "message:new", {
+      conversation: toConversationSummary(conversation, userId),
+      message,
+    });
+  }
+
+  if (input.unreadForUserId) {
+    await pushUnreadCount(input.unreadForUserId);
+  }
+
+  return message;
 };
 
 /*
@@ -943,4 +1214,8 @@ export const ChatService = {
   setArchived,
   postListingSystemMessage,
   getCounterpartId,
+  findOrCreateConversation,
+  assertCanReplyInConversation,
+  postCardMessage,
+  postCardNotice,
 };

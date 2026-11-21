@@ -6,7 +6,7 @@
  *   Phase 1 → seedDemoUsers, seedVehicleTypes, seedBrandsAndModels, seedSampleListings,
  *             seedDemoConversations, seedDemoTrust, seedModerationHistory,
  *             seedVerificationRequests, seedDemoEngagement, seedDemoReviews, seedDemoReports
- *   Phase 2 → seedPlans, seedCmsPages
+ *   Phase 2 → seedDemoOffers, seedDemoTestRides, seedPlans, seedCmsPages
  *   Phase 3 → seedGroups, seedBadges
  */
 import bcrypt from "bcrypt";
@@ -16,12 +16,15 @@ import {
   AuthProvider,
   DocumentKind,
   ListingStatus,
+  MessageType,
   NotificationCategory,
   NotificationType,
+  OfferStatus,
   ReportReason,
   ReportStatus,
   ReportTargetType,
   Role,
+  TestRideStatus,
   UserStatus,
   VerificationStatus,
   VerificationType,
@@ -34,6 +37,21 @@ import { prisma } from "../lib/prisma";
 import { syncSearch } from "../module/listing/listing.service";
 import { recalculateSellerRating } from "../module/review/review.utils";
 import { generateListingSlug } from "../module/listing/listing.utils";
+import {
+  offerExpiryDate,
+  offerNoticeText,
+  offerPreview,
+} from "../module/offer/offer.utils";
+import {
+  testRideNoticeText,
+  testRidePreview,
+} from "../module/testRide/testRide.utils";
+import {
+  dayOfWeekOf,
+  localTimeToUtc,
+  shiftDateKey,
+  toLocalDateKey,
+} from "../helper/timeZone";
 import { parseAttributes } from "../module/vehicleType/vehicleType.utils";
 import { VehicleAttributesZodSchema } from "../module/vehicleType/vehicleType.validation";
 import { seedSuperAdmin } from "./seed";
@@ -1118,6 +1136,419 @@ export const seedDemoReports = async (users: TDemoUsers) => {
   console.log(`Demo reports created: ${created}`);
 };
 
+// ============================================
+// Offers (Phase 2 · Part 1)
+// ============================================
+
+type TSeedOfferStep = {
+  from: "buyer" | "seller";
+  // share of the asking price
+  percent: number;
+  message?: string;
+  hoursAgo: number;
+};
+
+/*
+ * One negotiation inside the buyer's thread for a listing: every step is an
+ * OFFER card; all but the last are COUNTERED. The last step ends as
+ * `finalStatus` (ACCEPTED adds the SYSTEM notice the service would post).
+ */
+const seedOfferThread = async (input: {
+  listing: { id: string; price: Prisma.Decimal; sellerId: string };
+  buyerId: string;
+  steps: TSeedOfferStep[];
+  finalStatus: OfferStatus;
+}) => {
+  const { listing, buyerId } = input;
+  const at = (hoursAgo: number) =>
+    new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
+  const firstAt = at(input.steps[0].hoursAgo);
+
+  const existing = await prisma.conversation.findUnique({
+    where: { listingId_buyerId: { listingId: listing.id, buyerId } },
+  });
+
+  const conversation =
+    existing ??
+    (await prisma.conversation.create({
+      data: {
+        listingId: listing.id,
+        buyerId,
+        sellerId: listing.sellerId,
+        createdAt: firstAt,
+      },
+    }));
+
+  const price = Number(listing.price);
+  let parentOfferId: string | null = null;
+  let lastAt = firstAt;
+  let lastPreview = "";
+  let lastSenderId: string | null = null;
+
+  for (const [index, step] of input.steps.entries()) {
+    const isLast = index === input.steps.length - 1;
+    const proposedById = step.from === "buyer" ? buyerId : listing.sellerId;
+    const amount = Math.round((price * step.percent) / 100 / 500) * 500;
+    const createdAt = at(step.hoursAgo);
+
+    const offer: { id: string } = await prisma.offer.create({
+      data: {
+        listingId: listing.id,
+        conversationId: conversation.id,
+        buyerId,
+        sellerId: listing.sellerId,
+        proposedById,
+        amount,
+        message: step.message ?? "",
+        status: isLast ? input.finalStatus : OfferStatus.COUNTERED,
+        parentOfferId,
+        round: index + 1,
+        expiresAt: offerExpiryDate(config.offer_expiry_hours, createdAt),
+        respondedAt:
+          isLast && input.finalStatus === OfferStatus.PENDING
+            ? null
+            : at(Math.max(step.hoursAgo - 1, 0)),
+        createdAt,
+      },
+    });
+
+    await prisma.message.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: proposedById,
+        type: MessageType.OFFER,
+        body: step.message ?? "",
+        offerId: offer.id,
+        createdAt,
+      },
+    });
+
+    parentOfferId = offer.id;
+    lastAt = createdAt;
+    lastPreview = offerPreview(amount);
+    lastSenderId = proposedById;
+
+    if (isLast && input.finalStatus === OfferStatus.ACCEPTED) {
+      const noticeAt = at(Math.max(step.hoursAgo - 1, 0));
+      const body = offerNoticeText("accepted", amount);
+
+      await prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          senderId: null,
+          type: MessageType.SYSTEM,
+          body,
+          offerId: offer.id,
+          createdAt: noticeAt,
+        },
+      });
+
+      lastAt = noticeAt;
+      lastPreview = body.slice(0, 120);
+      lastSenderId = null;
+    }
+  }
+
+  // an open offer is unread for the side that has to answer it
+  const waitingSide =
+    input.finalStatus === OfferStatus.PENDING
+      ? lastSenderId === buyerId
+        ? "seller"
+        : "buyer"
+      : null;
+
+  await prisma.conversation.update({
+    where: { id: conversation.id },
+    data: {
+      lastMessageAt: lastAt,
+      lastMessagePreview: lastPreview,
+      lastMessageSenderId: lastSenderId,
+      // a new thread starts fully read; an existing one keeps its read markers
+      ...(!existing && {
+        buyerLastReadAt: waitingSide === "buyer" ? firstAt : lastAt,
+        sellerLastReadAt: waitingSide === "seller" ? firstAt : lastAt,
+      }),
+      ...(waitingSide === "seller" && { sellerUnreadCount: { increment: 1 } }),
+      ...(waitingSide === "buyer" && { buyerUnreadCount: { increment: 1 } }),
+    },
+  });
+};
+
+/*
+ * Three negotiations, each in a state the UI must handle:
+ *   buyer  ↔ seller  open offer waiting for the seller
+ *   buyer2 ↔ dealer  buyer offered, dealer countered (waiting for the buyer);
+ *                    a seller listing when the dealer has no negotiable one
+ *   buyer2 ↔ seller  accepted after one counter
+ */
+export const seedDemoOffers = async (users: TDemoUsers) => {
+  const negotiableOf = (sellerId: string) =>
+    prisma.listing.findMany({
+      where: {
+        sellerId,
+        status: ListingStatus.APPROVED,
+        isDeleted: false,
+        isNegotiable: true,
+      },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, price: true, sellerId: true },
+    });
+
+  const [sellerListings, dealerListings] = await Promise.all([
+    negotiableOf(users.seller.id),
+    negotiableOf(users.dealer.id),
+  ]);
+
+  const plans = [
+    {
+      listing: sellerListings[0],
+      buyerId: users.buyer.id,
+      finalStatus: OfferStatus.PENDING,
+      steps: [
+        {
+          from: "buyer" as const,
+          percent: 90,
+          message: "I can pay cash this weekend.",
+          hoursAgo: 6,
+        },
+      ],
+    },
+    {
+      // the demo dealer sells at fixed prices; fall back to a seller listing
+      listing: dealerListings[0] ?? sellerListings[2],
+      buyerId: users.buyer2.id,
+      finalStatus: OfferStatus.PENDING,
+      steps: [
+        { from: "buyer" as const, percent: 85, hoursAgo: 20 },
+        {
+          from: "seller" as const,
+          percent: 95,
+          message: "Includes a free first service.",
+          hoursAgo: 4,
+        },
+      ],
+    },
+    {
+      listing: sellerListings[1],
+      buyerId: users.buyer2.id,
+      finalStatus: OfferStatus.ACCEPTED,
+      steps: [
+        { from: "buyer" as const, percent: 88, hoursAgo: 30 },
+        { from: "seller" as const, percent: 94, hoursAgo: 28 },
+      ],
+    },
+  ];
+
+  let created = 0;
+
+  for (const plan of plans) {
+    if (!plan.listing) continue;
+
+    const exists = await prisma.offer.count({
+      where: { listingId: plan.listing.id, buyerId: plan.buyerId },
+    });
+
+    if (exists) continue;
+
+    await seedOfferThread({
+      listing: plan.listing,
+      buyerId: plan.buyerId,
+      steps: plan.steps,
+      finalStatus: plan.finalStatus,
+    });
+    created++;
+  }
+
+  console.log(
+    `Demo offer negotiations created: ${created} (others already existed)`,
+  );
+};
+
+// ============================================
+// Test rides (Phase 2 · Part 1)
+// ============================================
+
+// Bangladesh weekend is Friday: Saturday (6) to Thursday (4)
+const WORK_DAYS = [6, 0, 1, 2, 3, 4];
+
+/*
+ * Weekly hours for the seller (10:00–18:00, one ride at a time) and the
+ * dealer (10:00–20:00, two at once), then two bookings:
+ *   buyer  ↔ seller  REQUESTED, waiting for the seller
+ *   buyer2 ↔ dealer  CONFIRMED with a meeting note
+ * Times are the next working days after today, so they are always upcoming.
+ */
+export const seedDemoTestRides = async (users: TDemoUsers) => {
+  const hours = [
+    { sellerId: users.seller.id, endTime: "18:00", capacity: 1 },
+    { sellerId: users.dealer.id, endTime: "20:00", capacity: 2 },
+  ];
+
+  for (const plan of hours) {
+    const exists = await prisma.testRideAvailability.count({
+      where: { sellerId: plan.sellerId },
+    });
+
+    if (exists) continue;
+
+    await prisma.testRideAvailability.createMany({
+      data: WORK_DAYS.map((dayOfWeek) => ({
+        sellerId: plan.sellerId,
+        dayOfWeek,
+        startTime: "10:00",
+        endTime: plan.endTime,
+        slotMinutes: 30,
+        capacity: plan.capacity,
+      })),
+    });
+  }
+
+  const exists = await prisma.testRide.count({
+    where: { buyerId: { in: [users.buyer.id, users.buyer2.id] } },
+  });
+
+  if (exists) {
+    console.log("Demo test rides already exist!");
+    return;
+  }
+
+  // the n-th working day after today, at a local time
+  const workingDayAt = (nth: number, time: string) => {
+    let dateKey = toLocalDateKey(new Date());
+    let found = 0;
+
+    while (found < nth) {
+      dateKey = shiftDateKey(dateKey, 1);
+      if (WORK_DAYS.includes(dayOfWeekOf(dateKey))) found++;
+    }
+
+    return localTimeToUtc(dateKey, time);
+  };
+
+  const [sellerListing] = await liveListingsOf(users.seller.id);
+  const [dealerListing] = await liveListingsOf(users.dealer.id);
+
+  const bookings = [
+    {
+      listing: sellerListing,
+      sellerId: users.seller.id,
+      buyerId: users.buyer.id,
+      startsAt: workingDayAt(1, "11:00"),
+      status: TestRideStatus.REQUESTED,
+      buyerNote: "I'd like to check the brakes and the gearbox.",
+      sellerNote: "",
+    },
+    {
+      listing: dealerListing,
+      sellerId: users.dealer.id,
+      buyerId: users.buyer2.id,
+      startsAt: workingDayAt(2, "16:30"),
+      status: TestRideStatus.CONFIRMED,
+      buyerNote: "",
+      sellerNote: "Ask for Rafiq at the front desk. Bring your licence.",
+    },
+  ];
+
+  let created = 0;
+
+  for (const booking of bookings) {
+    if (!booking.listing) continue;
+
+    const conversation =
+      (await prisma.conversation.findUnique({
+        where: {
+          listingId_buyerId: {
+            listingId: booking.listing.id,
+            buyerId: booking.buyerId,
+          },
+        },
+      })) ??
+      (await prisma.conversation.create({
+        data: {
+          listingId: booking.listing.id,
+          buyerId: booking.buyerId,
+          sellerId: booking.sellerId,
+        },
+      }));
+
+    const requestedAt = new Date(Date.now() - 3 * 60 * 60 * 1000);
+
+    const ride = await prisma.testRide.create({
+      data: {
+        listingId: booking.listing.id,
+        conversationId: conversation.id,
+        buyerId: booking.buyerId,
+        sellerId: booking.sellerId,
+        startsAt: booking.startsAt,
+        endsAt: new Date(booking.startsAt.getTime() + 30 * 60 * 1000),
+        status: booking.status,
+        buyerNote: booking.buyerNote,
+        sellerNote: booking.sellerNote,
+        confirmedAt:
+          booking.status === TestRideStatus.CONFIRMED ? new Date() : null,
+        createdAt: requestedAt,
+      },
+    });
+
+    await prisma.message.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: booking.buyerId,
+        type: MessageType.TEST_RIDE,
+        body: booking.buyerNote,
+        testRideId: ride.id,
+        createdAt: requestedAt,
+      },
+    });
+
+    let lastAt = requestedAt;
+    let preview = testRidePreview(booking.startsAt);
+    let lastSenderId: string | null = booking.buyerId;
+
+    if (booking.status === TestRideStatus.CONFIRMED) {
+      lastAt = new Date();
+      preview = testRideNoticeText(
+        "confirmed",
+        booking.startsAt,
+        booking.sellerNote,
+      ).slice(0, 120);
+      lastSenderId = null;
+
+      await prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          senderId: null,
+          type: MessageType.SYSTEM,
+          body: testRideNoticeText(
+            "confirmed",
+            booking.startsAt,
+            booking.sellerNote,
+          ),
+          testRideId: ride.id,
+          createdAt: lastAt,
+        },
+      });
+    }
+
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: {
+        lastMessageAt: lastAt,
+        lastMessagePreview: preview,
+        lastMessageSenderId: lastSenderId,
+        // a request waits for the seller; a confirmation is news for the buyer
+        ...(booking.status === TestRideStatus.REQUESTED
+          ? { sellerUnreadCount: { increment: 1 } }
+          : { buyerUnreadCount: { increment: 1 } }),
+      },
+    });
+
+    created++;
+  }
+
+  console.log(`Demo test rides created: ${created}`);
+};
+
 /*
  * Prints every demo login (password from DEMO_USER_PASSWORD, never printed).
  */
@@ -1166,6 +1597,8 @@ const runSeed = async () => {
       await seedDemoEngagement(users);
       await seedDemoReviews(users);
       await seedDemoReports(users);
+      await seedDemoOffers(users);
+      await seedDemoTestRides(users);
     } else {
       console.log("Some demo users are missing. Skipping demo activity.");
     }

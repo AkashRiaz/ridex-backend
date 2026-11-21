@@ -11,6 +11,8 @@ import { redisClient } from "./redis";
 
 export const QUEUE_NAMES = {
   notificationEmail: "notification-email",
+  // delayed domain jobs: offer expiry, test ride expiry and reminders
+  scheduled: "scheduled",
 } as const;
 
 type TQueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -61,13 +63,26 @@ export const enqueueJob = async <T>(
   }
 };
 
+/*
+ * Worker connections run with the node-redis command timeout turned off
+ * (0 = off). node-redis cancels commands after 5s by default, and a worker
+ * keeps its connection busy with long blocking waits for new jobs, so its
+ * commands kept hitting that limit: an idle worker logged ~16 "TimeoutError"s
+ * per second (1,123 in a 70s test) and retried in a tight loop.
+ * With the timeout off: 0 errors in the same test, and jobs are still picked
+ * up within a second. BullMQ bounds each wait itself (with a watchdog).
+ * Keep this: the queue connection and the app client keep the 5s default.
+ */
+const createWorkerConnection = () =>
+  redisClient.duplicate({ commandOptions: { timeout: 0 } });
+
 export const startWorker = <T>(
   name: TQueueName,
   processor: Processor<T>,
   concurrency = 5,
 ) => {
   const worker = new Worker<T>(name, processor, {
-    connection: redisClient.duplicate(),
+    connection: createWorkerConnection(),
     prefix,
     concurrency,
   });

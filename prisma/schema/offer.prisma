@@ -1,0 +1,67 @@
+/**
+ * One row per proposal. A counter closes the previous row (COUNTERED)
+ * and opens a new one with parentOfferId + round + 1, so the whole
+ * negotiation is a chain inside one conversation.
+ * At most one PENDING offer per conversation (enforced in the service
+ * with an advisory lock on the conversation).
+ */
+model Offer {
+  id String @id @default(uuid())
+
+  listingId String
+
+  conversationId String
+
+  buyerId String
+
+  sellerId String
+
+  // buyer or seller; the other side is the one who responds
+  proposedById String
+
+  amount Decimal @db.Decimal(12, 2)
+
+  message String @default("")
+
+  status OfferStatus @default(PENDING)
+
+  // the offer this one counters (null for the first offer of a chain)
+  parentOfferId String?
+
+  // 1 for the first offer, +1 for each counter
+  round Int @default(1)
+
+  expiresAt DateTime
+
+  // accepted / declined / withdrawn / countered / expired / cancelled
+  respondedAt DateTime?
+
+  declineReason String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  buyer User @relation("BuyerOffers", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  seller User @relation("SellerOffers", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  proposedBy User @relation("ProposedOffers", fields: [proposedById], references: [id], onDelete: Cascade)
+
+  parentOffer Offer? @relation("OfferCounters", fields: [parentOfferId], references: [id], onDelete: SetNull)
+
+  counters Offer[] @relation("OfferCounters")
+
+  messages Message[]
+
+  @@index([listingId, status])
+  @@index([buyerId, status])
+  @@index([sellerId, status])
+  @@index([conversationId, createdAt])
+  @@index([status, expiresAt])
+  @@map("offers")
+}

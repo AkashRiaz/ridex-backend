@@ -52,6 +52,20 @@ export const CATEGORY_DEFAULTS: Record<NotificationCategory, TCategoryDefault> =
     },
     // verification decisions and report outcomes
     ACCOUNT: { inApp: true, email: true, lockedInApp: true, lockedEmail: true },
+    // offers received, countered, accepted, declined, expired
+    OFFERS: {
+      inApp: true,
+      email: true,
+      lockedInApp: false,
+      lockedEmail: false,
+    },
+    // bookings, confirmations, cancellations and reminders
+    TEST_RIDES: {
+      inApp: true,
+      email: true,
+      lockedInApp: false,
+      lockedEmail: false,
+    },
   };
 
 export const NOTIFICATION_CATEGORIES = Object.keys(
@@ -70,6 +84,20 @@ export const TYPE_CATEGORY: Record<NotificationType, NotificationCategory> = {
   REPORT_RESOLVED: NotificationCategory.ACCOUNT,
   VERIFICATION_APPROVED: NotificationCategory.ACCOUNT,
   VERIFICATION_REJECTED: NotificationCategory.ACCOUNT,
+  OFFER_RECEIVED: NotificationCategory.OFFERS,
+  OFFER_COUNTERED: NotificationCategory.OFFERS,
+  OFFER_ACCEPTED: NotificationCategory.OFFERS,
+  OFFER_DECLINED: NotificationCategory.OFFERS,
+  OFFER_WITHDRAWN: NotificationCategory.OFFERS,
+  OFFER_EXPIRED: NotificationCategory.OFFERS,
+  OFFER_CANCELLED: NotificationCategory.OFFERS,
+  OFFER_OTHER_ACCEPTED: NotificationCategory.OFFERS,
+  TEST_RIDE_REQUESTED: NotificationCategory.TEST_RIDES,
+  TEST_RIDE_CONFIRMED: NotificationCategory.TEST_RIDES,
+  TEST_RIDE_DECLINED: NotificationCategory.TEST_RIDES,
+  TEST_RIDE_CANCELLED: NotificationCategory.TEST_RIDES,
+  TEST_RIDE_EXPIRED: NotificationCategory.TEST_RIDES,
+  TEST_RIDE_REMINDER: NotificationCategory.TEST_RIDES,
   SYSTEM: NotificationCategory.ACCOUNT,
 };
 

@@ -2,6 +2,8 @@ import cron from "node-cron";
 import { config } from "../config";
 import { ListingService } from "../module/listing/listing.service";
 import { NotificationService } from "../module/notification/notification.service";
+import { OfferService } from "../module/offer/offer.service";
+import { TestRideService } from "../module/testRide/testRide.service";
 import { VerificationService } from "../module/verification/verification.service";
 import { prisma } from "./prisma";
 
@@ -68,6 +70,30 @@ export const purgeVerificationDocuments = async () => {
       }
     } catch (error) {
       console.error("Error purging verification documents:", error);
+    }
+  });
+};
+
+/*
+ * Hourly at :15: expire open offers past expiresAt and test ride requests
+ * that were never confirmed before their start. The delayed jobs normally
+ * do this on time; the sweep catches jobs Redis may have lost.
+ */
+export const expireOffers = async () => {
+  cron.schedule("15 * * * *", async () => {
+    try {
+      const offers = await OfferService.expireDueOffers();
+      const testRides = await TestRideService.expireDueTestRides();
+
+      if (offers > 0) {
+        console.log(`Expired ${offers} offer(s).`);
+      }
+
+      if (testRides > 0) {
+        console.log(`Expired ${testRides} test ride request(s).`);
+      }
+    } catch (error) {
+      console.error("Error expiring offers and test rides:", error);
     }
   });
 };

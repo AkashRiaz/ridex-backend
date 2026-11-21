@@ -102,6 +102,12 @@ model Listing {
 
   conversations Conversation[]
 
+  offers Offer[]
+
+  testRides TestRide[]
+
+  testRideAvailabilities TestRideAvailability[]
+
   @@index([status])
   @@index([sellerId])
   @@index([vehicleTypeId])

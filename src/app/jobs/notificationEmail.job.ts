@@ -28,6 +28,8 @@ import {
   isChannelEnabled,
   toAbsoluteLink,
 } from "../module/notification/notification.utils";
+import { offerPreview } from "../module/offer/offer.utils";
+import { testRidePreview } from "../module/testRide/testRide.utils";
 import { sendEmail } from "../utils/sendEmail";
 
 /*
@@ -153,7 +155,13 @@ const processUnreadMessagesEmail = async (data: IUnreadMessagesEmailJob) => {
     },
     orderBy: { createdAt: "desc" },
     take: DIGEST_MESSAGE_LIMIT,
-    select: { type: true, body: true, createdAt: true },
+    select: {
+      type: true,
+      body: true,
+      createdAt: true,
+      offer: { select: { amount: true } },
+      testRide: { select: { startsAt: true } },
+    },
   });
 
   await sendEmail({
@@ -169,7 +177,14 @@ const processUnreadMessagesEmail = async (data: IUnreadMessagesEmailJob) => {
       listingTitle: conversation.listing.title,
       unreadCount,
       messages: messages.reverse().map((message) => ({
-        text: message.type === MessageType.IMAGE ? "📷 Photo" : message.body,
+        text:
+          message.type === MessageType.IMAGE
+            ? "📷 Photo"
+            : message.type === MessageType.OFFER && message.offer
+              ? offerPreview(Number(message.offer.amount), message.body)
+              : message.type === MessageType.TEST_RIDE && message.testRide
+                ? testRidePreview(message.testRide.startsAt)
+                : message.body,
       })),
       ctaUrl: toAbsoluteLink(
         dashboardLink(user.role, `/messages/${conversation.id}`),

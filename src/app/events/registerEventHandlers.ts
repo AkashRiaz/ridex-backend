@@ -1,6 +1,8 @@
 import { config } from "../config";
 import { TAppEvents, appEvents, safeHandler } from "./appEvents";
 import { registerNotificationHandlers } from "./notificationHandlers";
+import { registerOfferHandlers } from "./offerHandlers";
+import { registerTestRideHandlers } from "./testRideHandlers";
 
 /*
  * Development log for every event, plus the notification handlers
@@ -23,6 +25,22 @@ export const registerEventHandlers = () => {
     "verification.approved",
     "verification.rejected",
     "message.created",
+    "listing.deleted",
+    "offer.created",
+    "offer.countered",
+    "offer.accepted",
+    "offer.declined",
+    "offer.withdrawn",
+    "offer.expired",
+    "offer.cancelled",
+    "testRide.requested",
+    "testRide.confirmed",
+    "testRide.declined",
+    "testRide.cancelled",
+    "testRide.expired",
+    "testRide.completed",
+    "testRide.noShow",
+    "testRide.reminder",
   ];
 
   for (const event of events) {
@@ -37,4 +55,6 @@ export const registerEventHandlers = () => {
   }
 
   registerNotificationHandlers();
+  registerOfferHandlers();
+  registerTestRideHandlers();
 };

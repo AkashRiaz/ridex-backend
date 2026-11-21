@@ -119,6 +119,20 @@ model User {
 
   notificationPreferences NotificationPreference[]
 
+  buyerOffers Offer[] @relation("BuyerOffers")
+
+  sellerOffers Offer[] @relation("SellerOffers")
+
+  proposedOffers Offer[] @relation("ProposedOffers")
+
+  buyerTestRides TestRide[] @relation("BuyerTestRides")
+
+  sellerTestRides TestRide[] @relation("SellerTestRides")
+
+  testRideAvailabilities TestRideAvailability[]
+
+  testRideBlockedDates TestRideBlockedDate[]
+
   @@index([email])
   @@index([phone])
   @@index([role])

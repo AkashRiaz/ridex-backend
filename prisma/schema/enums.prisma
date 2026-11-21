@@ -108,6 +108,10 @@ enum MessageType {
   TEXT
   IMAGE
   SYSTEM
+  // offer card (Message.offerId)
+  OFFER
+  // test ride card (Message.testRideId)
+  TEST_RIDE
 }
 
 enum NotificationCategory {
@@ -116,6 +120,8 @@ enum NotificationCategory {
   PRICE_ALERTS
   REVIEWS
   ACCOUNT
+  OFFERS
+  TEST_RIDES
 }
 
 enum NotificationType {
@@ -130,5 +136,41 @@ enum NotificationType {
   REPORT_RESOLVED
   VERIFICATION_APPROVED
   VERIFICATION_REJECTED
+  OFFER_RECEIVED
+  OFFER_COUNTERED
+  OFFER_ACCEPTED
+  OFFER_DECLINED
+  OFFER_WITHDRAWN
+  OFFER_EXPIRED
+  OFFER_CANCELLED
+  OFFER_OTHER_ACCEPTED
+  TEST_RIDE_REQUESTED
+  TEST_RIDE_CONFIRMED
+  TEST_RIDE_DECLINED
+  TEST_RIDE_CANCELLED
+  TEST_RIDE_EXPIRED
+  TEST_RIDE_REMINDER
   SYSTEM
+}
+
+enum OfferStatus {
+  PENDING
+  COUNTERED
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+  EXPIRED
+  // the listing was sold, expired or removed while the offer was open
+  CANCELLED
+}
+
+enum TestRideStatus {
+  REQUESTED
+  CONFIRMED
+  DECLINED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+  // never confirmed before its start time
+  EXPIRED
 }

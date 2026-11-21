@@ -129,6 +129,26 @@ export const config = {
   chat_email_delay_minutes: Number(process.env.CHAT_EMAIL_DELAY_MINUTES || 10),
 
   // ============================================
+  // Offers
+  // ============================================
+
+  // an unanswered offer or counter expires after this many hours
+  offer_expiry_hours: Number(process.env.OFFER_EXPIRY_HOURS || 48),
+  // lowest offer allowed, as a percent of the asking price
+  offer_min_percent: Number(process.env.OFFER_MIN_PERCENT || 50),
+  // offers + counters in one negotiation chain
+  offer_max_rounds: Number(process.env.OFFER_MAX_ROUNDS || 5),
+
+  // ============================================
+  // Test Rides
+  // ============================================
+
+  // a slot must start at least this many hours from now
+  test_ride_min_lead_hours: Number(process.env.TEST_RIDE_MIN_LEAD_HOURS || 2),
+  // how many days ahead buyers can book
+  test_ride_booking_days: Number(process.env.TEST_RIDE_BOOKING_DAYS || 14),
+
+  // ============================================
   // Notifications
   // ============================================
 

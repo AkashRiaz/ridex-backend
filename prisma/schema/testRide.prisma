@@ -1,0 +1,63 @@
+/**
+ * A buyer's booking of one availability slot for a listing.
+ * REQUESTED → CONFIRMED → COMPLETED | NO_SHOW
+ * ↘ DECLINED | CANCELLED | EXPIRED (not confirmed before startsAt)
+ * Double-booking is prevented in the service with an advisory lock on the
+ * seller and a capacity re-count.
+ */
+model TestRide {
+  id String @id @default(uuid())
+
+  listingId String
+
+  conversationId String
+
+  buyerId String
+
+  sellerId String
+
+  startsAt DateTime
+
+  endsAt DateTime
+
+  status TestRideStatus @default(REQUESTED)
+
+  buyerNote String @default("")
+
+  // e.g. where to meet, shown after confirmation
+  sellerNote String @default("")
+
+  declineReason String?
+
+  cancelReason String?
+
+  // null when the system cancelled it (listing sold, removed, …)
+  cancelledById String?
+
+  confirmedAt DateTime?
+
+  cancelledAt DateTime?
+
+  // COMPLETED / NO_SHOW / DECLINED / EXPIRED
+  closedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  buyer User @relation("BuyerTestRides", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  seller User @relation("SellerTestRides", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  messages Message[]
+
+  @@index([sellerId, startsAt])
+  @@index([buyerId, startsAt])
+  @@index([listingId, status])
+  @@index([status, startsAt])
+  @@map("test_rides")
+}

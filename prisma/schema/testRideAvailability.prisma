@@ -1,0 +1,38 @@
+/**
+ * Weekly test-ride hours of a seller, in config.timezone wall time.
+ * listingId null = default for all the seller's listings; rules with a
+ * listingId replace the defaults for that listing only.
+ * Capacity is counted per seller (overlapping bookings across listings).
+ */
+model TestRideAvailability {
+  id String @id @default(uuid())
+
+  sellerId String
+
+  listingId String?
+
+  // 0 = Sunday … 6 = Saturday
+  dayOfWeek Int
+
+  // "HH:mm", local time
+  startTime String
+
+  endTime String
+
+  slotMinutes Int @default(30)
+
+  // rides that can run at the same time
+  capacity Int @default(1)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  seller User @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId, dayOfWeek])
+  @@index([listingId])
+  @@map("test_ride_availabilities")
+}

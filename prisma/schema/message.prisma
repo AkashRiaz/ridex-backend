@@ -20,6 +20,12 @@ model Message {
   // client-generated id for optimistic sends; a retried send is never duplicated
   clientId String?
 
+  // OFFER cards, and SYSTEM notices about an offer (accepted, declined, …)
+  offerId String?
+
+  // TEST_RIDE cards, and SYSTEM notices about a test ride
+  testRideId String?
+
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
@@ -28,9 +34,15 @@ model Message {
 
   sender User? @relation("SentMessages", fields: [senderId], references: [id], onDelete: SetNull)
 
+  offer Offer? @relation(fields: [offerId], references: [id], onDelete: SetNull)
+
+  testRide TestRide? @relation(fields: [testRideId], references: [id], onDelete: SetNull)
+
   reports Report[]
 
   @@unique([senderId, clientId])
   @@index([conversationId, createdAt])
+  @@index([offerId])
+  @@index([testRideId])
   @@map("messages")
 }

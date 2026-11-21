@@ -96,6 +96,22 @@
     {
       "key": "superAdminPassword",
       "value": ""
+    },
+    {
+      "key": "offerId",
+      "value": ""
+    },
+    {
+      "key": "testRideId",
+      "value": ""
+    },
+    {
+      "key": "blockedDateId",
+      "value": ""
+    },
+    {
+      "key": "slotStartsAt",
+      "value": ""
     }
   ],
   "auth": {
@@ -2472,6 +2488,342 @@
             "method": "GET",
             "url": "{{apiUrl}}/audit-logs/{{auditLogId}}",
             "description": "One entry with the acting user and old/new data."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Offers",
+      "description": "Price negotiation inside chat. Roles: BUYER, SELLER, DEALER, DEALER_STAFF, INSPECTOR. Each offer or counter appears as an OFFER card in the conversation; accept/decline/withdraw/expire post a SYSTEM notice. Socket event `offer:updated` carries the live card state.",
+      "item": [
+        {
+          "name": "Make Offer",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/offers",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"amount\": 180000,\n  \"message\": \"I can pay cash this weekend.\"\n}"
+            },
+            "description": "Buyer only (not the listing's seller). Listing must be APPROVED and negotiable. Amount between OFFER_MIN_PERCENT of the price and the asking price. One open offer per conversation; none after an accepted one. Creates the conversation if needed. Expires after OFFER_EXPIRY_HOURS."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('offerId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Offers",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/offers?as=buyer&page=1&limit=10",
+            "description": "Offers I made or received. Filters: `as=buyer|seller`, `status`, `listingId`, `conversationId`, `searchTerm` (listing title, names). Sort: `createdAt`, `amount`, `expiresAt`. COUNTERED rows are hidden unless `status=COUNTERED`, so each negotiation shows its latest offer. Every row has `allowedActions` for the caller."
+          }
+        },
+        {
+          "name": "Get Offer",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/offers/{{offerId}}",
+            "description": "Participants only (404 otherwise). `history` lists every offer in the same conversation, oldest first."
+          }
+        },
+        {
+          "name": "Counter Offer",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/offers/{{offerId}}/counter",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 190000,\n  \"message\": \"Includes a free first service.\"\n}"
+            },
+            "description": "The recipient only, while PENDING and before expiresAt. Seller: above the buyer's offer and below their own last counter (first counter: up to the asking price). Buyer: above their last offer and below the seller's counter. At most OFFER_MAX_ROUNDS per negotiation. The countered offer becomes COUNTERED."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('offerId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Accept Offer",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/offers/{{offerId}}/accept",
+            "description": "The recipient only, while PENDING, before expiresAt and while the listing is APPROVED. The listing is not reserved: other buyers keep their offers and are told another offer was accepted. Two parallel accepts: one 200, one 409."
+          }
+        },
+        {
+          "name": "Decline Offer",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/offers/{{offerId}}/decline",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Too low for a 2023 model.\"\n}"
+            },
+            "description": "The recipient only, while PENDING. Reason is optional and shown in the chat notice."
+          }
+        },
+        {
+          "name": "Withdraw Offer",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/offers/{{offerId}}/withdraw",
+            "description": "The proposer only, while PENDING (also after expiresAt, until the expiry job runs)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Test Rides",
+      "description": "Sellers (SELLER, DEALER) set weekly hours and blocked dates; buyers (chat roles) book a free slot. Times are wall-clock in TIMEZONE (default Asia/Dhaka). Capacity is per seller across listings. Each booking is a TEST_RIDE card in chat; status changes post a SYSTEM notice. Socket event `testRide:updated` carries the live card state. Reminders go out 24h and 2h before a confirmed ride.",
+      "item": [
+        {
+          "name": "My Availability",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/test-rides/availability/me",
+            "description": "SELLER / DEALER. Weekly rules, upcoming blocked dates, and the settings the editor needs (timezone, slot lengths, booking days, lead hours)."
+          }
+        },
+        {
+          "name": "Replace My Availability",
+          "request": {
+            "method": "PUT",
+            "url": "{{apiUrl}}/test-rides/availability/me",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rules\": [\n    {\n      \"dayOfWeek\": 6,\n      \"startTime\": \"10:00\",\n      \"endTime\": \"18:00\",\n      \"slotMinutes\": 30,\n      \"capacity\": 1\n    },\n    {\n      \"dayOfWeek\": 0,\n      \"startTime\": \"10:00\",\n      \"endTime\": \"18:00\",\n      \"slotMinutes\": 30,\n      \"capacity\": 1\n    },\n    {\n      \"listingId\": \"{{listingId}}\",\n      \"dayOfWeek\": 1,\n      \"startTime\": \"15:00\",\n      \"endTime\": \"19:00\",\n      \"slotMinutes\": 60,\n      \"capacity\": 1\n    }\n  ]\n}"
+            },
+            "description": "SELLER / DEALER. Replaces the whole week. `listingId` null = default for all my listings; rules with a listingId replace the defaults for that listing. Ranges on the same day and scope must not overlap. Slot length 15/30/45/60/90/120 min, capacity 1–10. Existing bookings are kept."
+          }
+        },
+        {
+          "name": "Block a Date",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/test-rides/blocked-dates",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-12-16\",\n  \"reason\": \"Victory Day\"\n}"
+            },
+            "description": "SELLER / DEALER. A local calendar day (YYYY-MM-DD), today up to a year ahead. Existing bookings that day stay active; `affectedBookings` tells how many."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('blockedDateId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove Blocked Date",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/test-rides/blocked-dates/{{blockedDateId}}",
+            "description": "SELLER / DEALER, own dates only (404 otherwise)."
+          }
+        },
+        {
+          "name": "Available Slots (public)",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/test-rides/slots?listingId={{listingId}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. Free slots per local day, from today up to TEST_RIDE_BOOKING_DAYS ahead, starting at least TEST_RIDE_MIN_LEAD_HOURS from now. Optional `from` / `to` (YYYY-MM-DD) narrow the range. `hasAvailability: false` when the seller has no hours. Saves the first slot as `slotStartsAt`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const day = json.data && json.data.days && json.data.days[0];",
+                  "if (day && day.slots.length) {",
+                  "  pm.collectionVariables.set('slotStartsAt', day.slots[0].startsAt);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Book Test Ride",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/test-rides",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"startsAt\": \"{{slotStartsAt}}\",\n  \"note\": \"I'll bring my licence.\"\n}"
+            },
+            "description": "Buyer (not the listing's seller), listing APPROVED. `startsAt` must be one of the free slots (re-checked under a lock; 409 if taken). One upcoming booking per buyer per listing. Creates the conversation if needed. Expires if not confirmed by its start time."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('testRideId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Test Rides",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/test-rides?as=seller&upcoming=true&page=1&limit=10",
+            "description": "Filters: `as=buyer|seller`, `status`, `upcoming=true` (requested/confirmed, not over; soonest first) or `upcoming=false` (past or closed; newest first), `listingId`, `searchTerm`. Each row has `allowedActions` for the caller."
+          }
+        },
+        {
+          "name": "Get Test Ride",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/test-rides/{{testRideId}}",
+            "description": "Participants only (404 otherwise)."
+          }
+        },
+        {
+          "name": "Confirm Test Ride",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/test-rides/{{testRideId}}/confirm",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Meet at the Mirpur 10 petrol pump.\"\n}"
+            },
+            "description": "Seller only, REQUESTED and not started. The optional note (where to meet) is shown to the buyer. Schedules the 24h and 2h reminders."
+          }
+        },
+        {
+          "name": "Decline Test Ride",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/test-rides/{{testRideId}}/decline",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"The bike is at the workshop that day.\"\n}"
+            },
+            "description": "Seller only, REQUESTED. Reason required."
+          }
+        },
+        {
+          "name": "Cancel Test Ride",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/test-rides/{{testRideId}}/cancel",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Something came up.\"\n}"
+            },
+            "description": "Buyer or seller, REQUESTED or CONFIRMED and not started. Reason required. Frees the slot."
+          }
+        },
+        {
+          "name": "Mark Completed",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/test-rides/{{testRideId}}/complete",
+            "description": "Seller only, CONFIRMED and already started."
+          }
+        },
+        {
+          "name": "Mark No-Show",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/test-rides/{{testRideId}}/no-show",
+            "description": "Seller only, CONFIRMED and already started."
           }
         }
       ]

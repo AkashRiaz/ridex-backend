@@ -1,5 +1,10 @@
 import { config } from "../../config";
 import {
+  localMidnightToUtc,
+  shiftDateKey,
+  toLocalDateKey,
+} from "../../helper/timeZone";
+import {
   IDailyCountRow,
   IDashboardRange,
   TDashboardRangeKey,
@@ -19,73 +24,8 @@ export const DASHBOARD_RANGES: Record<TDashboardRangeKey, number> = {
 
 export const DEFAULT_DASHBOARD_RANGE: TDashboardRangeKey = "30d";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// ============================================
-// Time zone helpers
-// ============================================
-
-/*
- * "YYYY-MM-DD" of an instant in the given time zone.
- */
-export const toLocalDateKey = (date: Date, timeZone = config.timezone) =>
-  new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-
-/*
- * Offset of the time zone from UTC at an instant, in ms (Asia/Dhaka → +6h).
- */
-const getTimeZoneOffset = (date: Date, timeZone: string) => {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).formatToParts(date);
-
-  const value = (type: string) =>
-    Number(parts.find((part) => part.type === type)?.value);
-
-  const asUtc = Date.UTC(
-    value("year"),
-    value("month") - 1,
-    value("day"),
-    value("hour"),
-    value("minute"),
-    value("second"),
-  );
-
-  return asUtc - Math.floor(date.getTime() / 1000) * 1000;
-};
-
-/*
- * The UTC instant of local midnight for a "YYYY-MM-DD" key.
- */
-export const localMidnightToUtc = (
-  dateKey: string,
-  timeZone = config.timezone,
-) => {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  const guess = new Date(Date.UTC(year, month - 1, day));
-
-  return new Date(guess.getTime() - getTimeZoneOffset(guess, timeZone));
-};
-
-const shiftDateKey = (dateKey: string, days: number) => {
-  const [year, month, day] = dateKey.split("-").map(Number);
-
-  return new Date(Date.UTC(year, month - 1, day) + days * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
-};
+// Time zone helpers live in helper/timeZone.ts (shared with test rides)
+export { localMidnightToUtc, toLocalDateKey };
 
 // ============================================
 // Ranges

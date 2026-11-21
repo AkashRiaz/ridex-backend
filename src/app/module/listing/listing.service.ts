@@ -956,6 +956,11 @@ const deleteListing = async (
       );
     }
   });
+
+  appEvents.emit("listing.deleted", {
+    ...listingRef(listing),
+    deletedById: requestUser.userId,
+  });
 };
 
 // ============================================

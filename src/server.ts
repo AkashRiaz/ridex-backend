@@ -3,10 +3,12 @@ import app from "./app";
 import { config } from "./app/config";
 import { registerEventHandlers } from "./app/events/registerEventHandlers";
 import { startNotificationEmailWorker } from "./app/jobs/notificationEmail.job";
+import { startScheduledWorker } from "./app/jobs/scheduled.job";
 import {
   deleteOldNotifications,
   deleteUnverifiedUsers,
   expireListings,
+  expireOffers,
   purgeVerificationDocuments,
 } from "./app/lib/cron";
 import { isSmtpConfigured, transporter } from "./app/lib/nodemailer";
@@ -54,11 +56,15 @@ const main = async () => {
     await expireListings();
     await purgeVerificationDocuments();
     await deleteOldNotifications();
+    await expireOffers();
 
     registerEventHandlers();
 
     startNotificationEmailWorker();
     console.log("Notification email worker started.");
+
+    startScheduledWorker();
+    console.log("Scheduled jobs worker started.");
 
     server = createServer(app);
     initSocket(server, [registerChatSocketHandlers]);

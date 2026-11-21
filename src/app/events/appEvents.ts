@@ -1,4 +1,7 @@
 import { EventEmitter } from "node:events";
+import { IOfferRef } from "../module/offer/offer.interface";
+import { ITestRideRef } from "../module/testRide/testRide.interface";
+import { TReminderKind } from "../module/testRide/testRide.utils";
 
 /*
  * Internal domain events (core rule 5). Services emit AFTER commit;
@@ -20,6 +23,7 @@ export type TAppEvents = {
   "listing.sold": TListingRef;
   "listing.priceDropped": TListingRef & { oldPrice: number; newPrice: number };
   "listing.expired": TListingRef;
+  "listing.deleted": TListingRef & { deletedById: string };
   "review.created": {
     reviewId: string;
     sellerId: string;
@@ -54,6 +58,25 @@ export type TAppEvents = {
     senderId: string;
     recipientId: string;
   };
+  "offer.created": IOfferRef;
+  "offer.countered": IOfferRef & { counteredOfferId: string };
+  "offer.accepted": IOfferRef;
+  "offer.declined": IOfferRef & { reason: string | null };
+  "offer.withdrawn": IOfferRef;
+  "offer.expired": IOfferRef;
+  "offer.cancelled": IOfferRef & { reason: string };
+  "testRide.requested": ITestRideRef;
+  "testRide.confirmed": ITestRideRef & { note: string };
+  "testRide.declined": ITestRideRef & { reason: string };
+  // cancelledById null = cancelled by the system (listing sold, removed, …)
+  "testRide.cancelled": ITestRideRef & {
+    cancelledById: string | null;
+    reason: string;
+  };
+  "testRide.expired": ITestRideRef;
+  "testRide.completed": ITestRideRef;
+  "testRide.noShow": ITestRideRef;
+  "testRide.reminder": ITestRideRef & { kind: TReminderKind };
 };
 
 class TypedEmitter {

@@ -6,10 +6,12 @@ import { ChatRoutes } from "../module/chat/chat.route";
 import { DashboardRoutes } from "../module/dashboard/dashboard.route";
 import { ListingRoutes } from "../module/listing/listing.route";
 import { NotificationRoutes } from "../module/notification/notification.route";
+import { OfferRoutes } from "../module/offer/offer.route";
 import { QuickReplyRoutes } from "../module/quickReply/quickReply.route";
 import { RecentlyViewedRoutes } from "../module/recentlyViewed/recentlyViewed.route";
 import { ReportRoutes } from "../module/report/report.route";
 import { ReviewRoutes } from "../module/review/review.route";
+import { TestRideRoutes } from "../module/testRide/testRide.route";
 import { SearchRoutes } from "../module/search/search.route";
 import { UserRoutes } from "../module/user/user.route";
 import { UserBlockRoutes } from "../module/userBlock/userBlock.route";
@@ -48,6 +50,8 @@ const moduleRoutes: TModuleRoute[] = [
   { path: "/notifications", route: NotificationRoutes },
   { path: "/dashboard", route: DashboardRoutes },
   { path: "/audit-logs", route: AuditLogRoutes },
+  { path: "/offers", route: OfferRoutes },
+  { path: "/test-rides", route: TestRideRoutes },
 ];
 
 moduleRoutes.forEach((moduleRoute) => {

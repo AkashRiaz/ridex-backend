@@ -17,7 +17,7 @@ model AuditLog {
 
   userAgent String?
 
-  user User? @relation( fields: [userId], references: [id],onDelete: SetNull )
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
