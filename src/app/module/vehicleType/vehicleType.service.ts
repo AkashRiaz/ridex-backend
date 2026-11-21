@@ -9,7 +9,11 @@ import { queryBuilder } from "../../helper/queryBuilder";
 import { IQuery } from "../../interfaces";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../utils/AppError";
-import { buildAuditDiff, createAuditLog, TAuditActor } from "../../utils/auditLogger";
+import {
+  buildAuditDiff,
+  createAuditLog,
+  TAuditActor,
+} from "../../utils/auditLogger";
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
@@ -28,7 +32,10 @@ const uploadImage = async (image: Express.Multer.File | null) => {
   if (!image) return null;
 
   if (!image.mimetype.startsWith("image/")) {
-    throw new AppError(httpStatus.UNSUPPORTED_MEDIA_TYPE, "Image must be an image file");
+    throw new AppError(
+      httpStatus.UNSUPPORTED_MEDIA_TYPE,
+      "Image must be an image file",
+    );
   }
 
   return uploadToCloudinary(image, {
@@ -55,7 +62,9 @@ const assertNameAndSlugAvailable = async (
   const existing = await prisma.vehicleType.findFirst({
     where: {
       OR: [
-        ...(name ? [{ name: { equals: name, mode: "insensitive" as const } }] : []),
+        ...(name
+          ? [{ name: { equals: name, mode: "insensitive" as const } }]
+          : []),
         ...(slug ? [{ slug }] : []),
       ],
       ...(excludeId && { NOT: { id: excludeId } }),
@@ -90,7 +99,9 @@ const createVehicleType = async (
   const slug =
     payload.slug ??
     (await generateUniqueSlug(payload.name, async (candidate) =>
-      Boolean(await prisma.vehicleType.findUnique({ where: { slug: candidate } })),
+      Boolean(
+        await prisma.vehicleType.findUnique({ where: { slug: candidate } }),
+      ),
     ));
 
   const imageResult = await uploadImage(image);
@@ -103,7 +114,8 @@ const createVehicleType = async (
       icon: payload.icon ?? null,
       sortOrder: payload.sortOrder ?? 0,
       isActive: payload.isActive ?? true,
-      attributes: (payload.attributes ?? []) as unknown as Prisma.InputJsonValue,
+      attributes: (payload.attributes ??
+        []) as unknown as Prisma.InputJsonValue,
       ...(imageResult && {
         imageUrl: imageResult.secure_url,
         imagePublicId: imageResult.public_id,
@@ -219,7 +231,10 @@ const updateVehicleType = async (
     await deleteFromCloudinary(existingVehicleType.imagePublicId);
   }
 
-  const diff = buildAuditDiff(existingVehicleType, { ...payload, imageUrl: imageResult?.secure_url });
+  const diff = buildAuditDiff(existingVehicleType, {
+    ...payload,
+    imageUrl: imageResult?.secure_url,
+  });
 
   if (diff.changed) {
     await createAuditLog({
@@ -295,8 +310,12 @@ const updateVehicleTypeAttributes = async (
         action: AuditAction.UPDATE,
         entity: "VehicleType",
         entityId: id,
-        oldData: { attributes: existingVehicleType.attributes as Prisma.InputJsonValue },
-        newData: { attributes: payload.attributes as unknown as Prisma.InputJsonValue },
+        oldData: {
+          attributes: existingVehicleType.attributes as Prisma.InputJsonValue,
+        },
+        newData: {
+          attributes: payload.attributes as unknown as Prisma.InputJsonValue,
+        },
       },
       tx,
     );

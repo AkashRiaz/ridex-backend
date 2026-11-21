@@ -1,4 +1,4 @@
-import path from "path";
+import path from "node:path";
 import ejs from "ejs";
 import { config } from "../config";
 import { isSmtpConfigured, transporter } from "../lib/nodemailer";

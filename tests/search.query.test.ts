@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { BD_DIVISIONS, isInsideBangladesh } from "../src/app/helper/bdLocations";
+import {
+  BD_DIVISIONS,
+  isInsideBangladesh,
+} from "../src/app/helper/bdLocations";
 import {
   buildSearchSql,
   buildTsQuery,
@@ -57,7 +60,11 @@ describe("parseSpecFilters", () => {
     [{ "spec.abs": "none" }, null, /Choose a vehicle type/],
     [{ "spec.topSpeed.min": "100" }, attributes, /not a filterable spec/],
     [{ "spec.madeUp": "1" }, attributes, /not a filterable spec/],
-    [{ "spec.engineCapacity": "150" }, attributes, /\.min or spec\.engineCapacity\.max/],
+    [
+      { "spec.engineCapacity": "150" },
+      attributes,
+      /\.min or spec\.engineCapacity\.max/,
+    ],
     [{ "spec.engineCapacity.min": "fast" }, attributes, /must be a number/],
     [{ "spec.abs": "triple" }, attributes, /not a valid ABS option/],
     [{ "spec.abs.min": "1" }, attributes, /Unknown filter/],
@@ -67,7 +74,12 @@ describe("parseSpecFilters", () => {
 });
 
 describe("buildSearchSql", () => {
-  const base = { specFilters: [], sortBy: "newest" as const, limit: 24, skip: 0 };
+  const base = {
+    specFilters: [],
+    sortBy: "newest" as const,
+    limit: 24,
+    skip: 0,
+  };
 
   it("always limits to approved, non-deleted listings", () => {
     const sql = buildSearchSql(base);
@@ -93,16 +105,29 @@ describe("buildSearchSql", () => {
   });
 
   it("uses relevance only with a search term and nearest only with a location", () => {
-    expect(buildSearchSql({ ...base, sortBy: "relevance" }).sql).toContain(`l."approvedAt" DESC`);
-    expect(buildSearchSql({ ...base, searchTerm: "r15", sortBy: "relevance" }).sql).toContain("rank DESC");
-    expect(buildSearchSql({ ...base, sortBy: "nearest" }).sql).not.toContain("distance ASC");
+    expect(buildSearchSql({ ...base, sortBy: "relevance" }).sql).toContain(
+      `l."approvedAt" DESC`,
+    );
     expect(
-      buildSearchSql({ ...base, sortBy: "nearest", near: { lat: 23.8, lng: 90.4, radiusKm: 10 } }).sql,
+      buildSearchSql({ ...base, searchTerm: "r15", sortBy: "relevance" }).sql,
+    ).toContain("rank DESC");
+    expect(buildSearchSql({ ...base, sortBy: "nearest" }).sql).not.toContain(
+      "distance ASC",
+    );
+    expect(
+      buildSearchSql({
+        ...base,
+        sortBy: "nearest",
+        near: { lat: 23.8, lng: 90.4, radiusKm: 10 },
+      }).sql,
     ).toContain("distance ASC");
   });
 
   it("adds a bounding box before the exact radius", () => {
-    const sql = buildSearchSql({ ...base, near: { lat: 23.8, lng: 90.4, radiusKm: 10 } });
+    const sql = buildSearchSql({
+      ...base,
+      near: { lat: 23.8, lng: 90.4, radiusKm: 10 },
+    });
 
     expect(sql.sql).toContain(`l."latitude" BETWEEN`);
     expect(sql.sql).toContain("ASIN(SQRT(");
@@ -117,7 +142,11 @@ describe("SearchListingsQueryZodSchema", () => {
       condition: "NEW,USED",
     });
 
-    expect(parsed).toMatchObject({ brand: ["yamaha", "honda"], minPrice: 1000, condition: ["NEW", "USED"] });
+    expect(parsed).toMatchObject({
+      brand: ["yamaha", "honda"],
+      minPrice: 1000,
+      condition: ["NEW", "USED"],
+    });
   });
 
   it.each([
@@ -130,7 +159,9 @@ describe("SearchListingsQueryZodSchema", () => {
     const result = SearchListingsQueryZodSchema.safeParse(query);
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues.map((issue) => issue.message).join(" ")).toMatch(message);
+      expect(
+        result.error.issues.map((issue) => issue.message).join(" "),
+      ).toMatch(message);
     }
   });
 });
@@ -142,6 +173,10 @@ describe("bdLocations", () => {
     expect(BD_DIVISIONS).toHaveLength(8);
     expect(districts).toHaveLength(64);
     expect(new Set(districts.map((district) => district.name)).size).toBe(64);
-    expect(districts.every((district) => isInsideBangladesh(district.lat, district.lng))).toBe(true);
+    expect(
+      districts.every((district) =>
+        isInsideBangladesh(district.lat, district.lng),
+      ),
+    ).toBe(true);
   });
 });

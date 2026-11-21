@@ -35,8 +35,15 @@ export const VehicleAttributeZodSchema = z
       .min(1, "Attribute label is required")
       .max(60, "Attribute label must be at most 60 characters"),
     type: z.enum(ATTRIBUTE_TYPES, { message: "Invalid attribute type" }),
-    unit: z.string().trim().max(20, "Unit must be at most 20 characters").optional(),
-    options: z.array(AttributeOptionZodSchema).max(50, "At most 50 options").optional(),
+    unit: z
+      .string()
+      .trim()
+      .max(20, "Unit must be at most 20 characters")
+      .optional(),
+    options: z
+      .array(AttributeOptionZodSchema)
+      .max(50, "At most 50 options")
+      .optional(),
     min: z.number().optional(),
     max: z.number().optional(),
     step: z.number().positive("Step must be positive").optional(),
@@ -68,7 +75,9 @@ export const VehicleAttributeZodSchema = z
       }
 
       const values = options.map((option) => option.value);
-      const duplicate = values.find((value, index) => values.indexOf(value) !== index);
+      const duplicate = values.find(
+        (value, index) => values.indexOf(value) !== index,
+      );
 
       if (duplicate) {
         ctx.addIssue({
@@ -131,7 +140,10 @@ const SlugZodSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase words separated by -")
+  .regex(
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+    "Slug must be lowercase words separated by -",
+  )
   .max(80, "Slug must be at most 80 characters");
 
 export const CreateVehicleTypeZodSchema = z.object({

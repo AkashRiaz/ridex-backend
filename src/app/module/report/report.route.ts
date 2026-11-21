@@ -3,13 +3,21 @@ import { Role } from "../../../generated/prisma/enums";
 import { auth } from "../../middleware/checkAuth";
 import { validateRequest } from "../../middleware/validateRequest";
 import { ReportController } from "./report.controller";
-import { CreateReportZodSchema, UpdateReportZodSchema } from "./report.validation";
+import {
+  CreateReportZodSchema,
+  UpdateReportZodSchema,
+} from "./report.validation";
 
 const router = Router();
 
 const STAFF_ROLES = [Role.MODERATOR, Role.ADMIN, Role.SUPER_ADMIN];
 
-router.post("/", auth(), validateRequest(CreateReportZodSchema), ReportController.createReport);
+router.post(
+  "/",
+  auth(),
+  validateRequest(CreateReportZodSchema),
+  ReportController.createReport,
+);
 
 router.get("/my", auth(), ReportController.getMyReports);
 

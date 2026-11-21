@@ -1,6 +1,15 @@
-import { ReportReason, ReportStatus, ReportTargetType } from "../../../generated/prisma/enums";
+import {
+  ReportReason,
+  ReportStatus,
+  ReportTargetType,
+} from "../../../generated/prisma/enums";
 
-export const REPORT_ACTIONS = ["NONE", "TAKE_DOWN_LISTING", "BLOCK_USER", "HIDE_REVIEW"] as const;
+export const REPORT_ACTIONS = [
+  "NONE",
+  "TAKE_DOWN_LISTING",
+  "BLOCK_USER",
+  "HIDE_REVIEW",
+] as const;
 
 export type TReportAction = (typeof REPORT_ACTIONS)[number];
 

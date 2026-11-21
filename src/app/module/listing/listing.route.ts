@@ -25,11 +25,23 @@ router.post(
   ListingController.createListingDraft,
 );
 
-router.get("/my-listings", auth(...SELLER_ROLES), ListingController.getMyListings);
+router.get(
+  "/my-listings",
+  auth(...SELLER_ROLES),
+  ListingController.getMyListings,
+);
 
-router.get("/manage", auth(...STAFF_ROLES), ListingController.getManagedListings);
+router.get(
+  "/manage",
+  auth(...STAFF_ROLES),
+  ListingController.getManagedListings,
+);
 
-router.get("/:idOrSlug", optionalAuth(), ListingController.getListingByIdOrSlug);
+router.get(
+  "/:idOrSlug",
+  optionalAuth(),
+  ListingController.getListingByIdOrSlug,
+);
 
 router.get("/:idOrSlug/similar", ListingController.getSimilarListings);
 
@@ -60,7 +72,11 @@ router.delete(
   ListingController.deleteListingImage,
 );
 
-router.post("/:id/submit", auth(...SELLER_ROLES), ListingController.submitListing);
+router.post(
+  "/:id/submit",
+  auth(...SELLER_ROLES),
+  ListingController.submitListing,
+);
 
 router.patch(
   "/:id/status",
@@ -69,9 +85,17 @@ router.patch(
   ListingController.updateListingStatus,
 );
 
-router.post("/:id/mark-sold", auth(...SELLER_ROLES), ListingController.markListingSold);
+router.post(
+  "/:id/mark-sold",
+  auth(...SELLER_ROLES),
+  ListingController.markListingSold,
+);
 
-router.post("/:id/renew", auth(...SELLER_ROLES), ListingController.renewListing);
+router.post(
+  "/:id/renew",
+  auth(...SELLER_ROLES),
+  ListingController.renewListing,
+);
 
 router.delete(
   "/:id",

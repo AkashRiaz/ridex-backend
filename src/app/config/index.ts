@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import path from "path";
+import path from "node:path";
 
 dotenv.config({ path: path.join(process.cwd(), ".env") });
 
@@ -11,7 +11,11 @@ export const config = {
   app_name: process.env.APP_NAME || "RideX",
   frontend_url: process.env.FRONTEND_URL || "http://localhost:3000",
   backend_url: process.env.BACKEND_URL || "http://localhost:5000",
-  cors_origins: (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || "http://localhost:3000")
+  cors_origins: (
+    process.env.CORS_ORIGINS ||
+    process.env.FRONTEND_URL ||
+    "http://localhost:3000"
+  )
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
@@ -23,6 +27,7 @@ export const config = {
   // IANA zone used to bucket dashboard charts by local day
   timezone: process.env.TIMEZONE || "Asia/Dhaka",
   dashboard_cache_seconds: Number(process.env.DASHBOARD_CACHE_SECONDS || 60),
+  home_cache_seconds: Number(process.env.HOME_CACHE_SECONDS || 300),
 
   // ============================================
   // Auth
@@ -36,7 +41,10 @@ export const config = {
   google_client_id: process.env.GOOGLE_CLIENT_ID,
   enable_google_login: process.env.ENABLE_GOOGLE_LOGIN === "true",
   // "lax" for same-site deployments, "none" when frontend and API are on different sites (requires HTTPS)
-  cookie_same_site: (process.env.COOKIE_SAME_SITE || "lax") as "lax" | "strict" | "none",
+  cookie_same_site: (process.env.COOKIE_SAME_SITE || "lax") as
+    | "lax"
+    | "strict"
+    | "none",
   cookie_domain: process.env.COOKIE_DOMAIN || undefined,
   // short-lived token the browser uses for the Socket.io handshake (never accepted by REST auth)
   jwt_socket_secret: process.env.JWT_SOCKET_SECRET!,
@@ -48,8 +56,12 @@ export const config = {
 
   otp_expires_minutes: Number(process.env.OTP_EXPIRES_MINUTES || 5),
   otp_max_attempts: Number(process.env.OTP_MAX_ATTEMPTS || 5),
-  otp_resend_cooldown_seconds: Number(process.env.OTP_RESEND_COOLDOWN_SECONDS || 60),
-  unverified_user_ttl_hours: Number(process.env.UNVERIFIED_USER_TTL_HOURS || 24),
+  otp_resend_cooldown_seconds: Number(
+    process.env.OTP_RESEND_COOLDOWN_SECONDS || 60,
+  ),
+  unverified_user_ttl_hours: Number(
+    process.env.UNVERIFIED_USER_TTL_HOURS || 24,
+  ),
 
   // ============================================
   // SMS
@@ -64,7 +76,9 @@ export const config = {
   // Rate Limit
   // ============================================
 
-  rate_limit_window_minutes: Number(process.env.RATE_LIMIT_WINDOW_MINUTES || 15),
+  rate_limit_window_minutes: Number(
+    process.env.RATE_LIMIT_WINDOW_MINUTES || 15,
+  ),
   rate_limit_max: Number(process.env.RATE_LIMIT_MAX || 300),
   // shared by login, register, OTP and password-reset endpoints (per IP / 15 min)
   auth_rate_limit_max: Number(process.env.AUTH_RATE_LIMIT_MAX || 20),
@@ -108,7 +122,9 @@ export const config = {
   // messages per user per minute (socket + REST combined)
   chat_message_rate_limit: Number(process.env.CHAT_MESSAGE_RATE_LIMIT || 30),
   // new conversations per user per hour
-  chat_new_conversation_limit: Number(process.env.CHAT_NEW_CONVERSATION_LIMIT || 20),
+  chat_new_conversation_limit: Number(
+    process.env.CHAT_NEW_CONVERSATION_LIMIT || 20,
+  ),
   // unread messages are emailed after this delay if still unread and the user is offline
   chat_email_delay_minutes: Number(process.env.CHAT_EMAIL_DELAY_MINUTES || 10),
 
@@ -117,7 +133,9 @@ export const config = {
   // ============================================
 
   // read notifications older than this are deleted by the daily cron
-  notification_retention_days: Number(process.env.NOTIFICATION_RETENTION_DAYS || 90),
+  notification_retention_days: Number(
+    process.env.NOTIFICATION_RETENTION_DAYS || 90,
+  ),
 
   // ============================================
   // Super Admin (seeded on boot)

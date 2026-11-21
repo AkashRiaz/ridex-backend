@@ -1,18 +1,33 @@
-import { DocumentKind, VerificationType } from "../../../generated/prisma/enums";
+import {
+  DocumentKind,
+  VerificationType,
+} from "../../../generated/prisma/enums";
 import { TVerificationRules } from "./verification.interface";
 
 export const DOCUMENT_PURGE_AFTER_DAYS = 30;
 
 export const VERIFICATION_RULES: TVerificationRules = {
   ID: {
-    required: [DocumentKind.NID_FRONT, DocumentKind.NID_BACK, DocumentKind.SELFIE],
-    allowed: [DocumentKind.NID_FRONT, DocumentKind.NID_BACK, DocumentKind.SELFIE],
+    required: [
+      DocumentKind.NID_FRONT,
+      DocumentKind.NID_BACK,
+      DocumentKind.SELFIE,
+    ],
+    allowed: [
+      DocumentKind.NID_FRONT,
+      DocumentKind.NID_BACK,
+      DocumentKind.SELFIE,
+    ],
     repeatable: {},
     pdfAllowed: [],
   },
   DEALER: {
     required: [DocumentKind.TRADE_LICENSE],
-    allowed: [DocumentKind.TRADE_LICENSE, DocumentKind.TIN_CERTIFICATE, DocumentKind.SHOWROOM_PHOTO],
+    allowed: [
+      DocumentKind.TRADE_LICENSE,
+      DocumentKind.TIN_CERTIFICATE,
+      DocumentKind.SHOWROOM_PHOTO,
+    ],
     repeatable: { [DocumentKind.SHOWROOM_PHOTO]: 4 },
     pdfAllowed: [DocumentKind.TRADE_LICENSE, DocumentKind.TIN_CERTIFICATE],
   },
@@ -39,7 +54,9 @@ export const getDocumentProblems = (
 
   for (const kind of kinds) {
     if (!rule.allowed.includes(kind)) {
-      problems.push(`${label(kind)} is not used for ${type.toLowerCase()} verification`);
+      problems.push(
+        `${label(kind)} is not used for ${type.toLowerCase()} verification`,
+      );
     }
   }
 
@@ -59,7 +76,9 @@ export const getDocumentProblems = (
     const isPdf = mimetype === "application/pdf";
 
     if (!isImage && !(isPdf && rule.pdfAllowed.includes(kind))) {
-      problems.push(`${label(kind)} must be ${rule.pdfAllowed.includes(kind) ? "an image or PDF" : "a photo"}`);
+      problems.push(
+        `${label(kind)} must be ${rule.pdfAllowed.includes(kind) ? "an image or PDF" : "a photo"}`,
+      );
     }
   });
 
@@ -70,15 +89,19 @@ const label = (kind: DocumentKind) =>
   kind
     .toLowerCase()
     .split("_")
-    .map((word) => (word === "nid" || word === "tin" ? word.toUpperCase() : word))
+    .map((word) =>
+      word === "nid" || word === "tin" ? word.toUpperCase() : word,
+    )
     .join(" ")
     .replace(/^./, (character) => character.toUpperCase());
 
 export const documentLabel = label;
 
 // only the last 4 digits ever leave this function
-export const maskNid = (nidNumber: string) => nidNumber.replace(/\D/g, "").slice(-4);
+export const maskNid = (nidNumber: string) =>
+  nidNumber.replace(/\D/g, "").slice(-4);
 
 export const isPurgeDue = (reviewedAt: Date | null, now = new Date()) =>
   Boolean(reviewedAt) &&
-  now.getTime() - (reviewedAt as Date).getTime() >= DOCUMENT_PURGE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+  now.getTime() - (reviewedAt as Date).getTime() >=
+    DOCUMENT_PURGE_AFTER_DAYS * 24 * 60 * 60 * 1000;

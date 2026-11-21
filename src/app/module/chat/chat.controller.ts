@@ -5,7 +5,10 @@ import { AppError } from "../../utils/AppError";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import { ChatService } from "./chat.service";
-import { ConversationParamZodSchema, MessagesQueryZodSchema } from "./chat.validation";
+import {
+  ConversationParamZodSchema,
+  MessagesQueryZodSchema,
+} from "./chat.validation";
 
 const parseConversationId = (req: Request) => {
   const result = ConversationParamZodSchema.safeParse(req.params);
@@ -18,7 +21,10 @@ const parseConversationId = (req: Request) => {
 };
 
 const startConversation = catchAsync(async (req: Request, res: Response) => {
-  const result = await ChatService.startConversation(req.user as RequestUser, req.body);
+  const result = await ChatService.startConversation(
+    req.user as RequestUser,
+    req.body,
+  );
 
   sendResponse(res, {
     success: true,
@@ -58,7 +64,10 @@ const getUnreadCount = catchAsync(async (req: Request, res: Response) => {
 const getConversationById = catchAsync(async (req: Request, res: Response) => {
   const { userId } = req.user as RequestUser;
 
-  const result = await ChatService.getConversationById(userId, parseConversationId(req));
+  const result = await ChatService.getConversationById(
+    userId,
+    parseConversationId(req),
+  );
 
   sendResponse(res, {
     success: true,
@@ -74,10 +83,17 @@ const getMessages = catchAsync(async (req: Request, res: Response) => {
   const query = MessagesQueryZodSchema.safeParse(req.query);
 
   if (!query.success) {
-    throw new AppError(httpStatus.BAD_REQUEST, query.error.issues.map((issue) => issue.message).join(", "));
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      query.error.issues.map((issue) => issue.message).join(", "),
+    );
   }
 
-  const result = await ChatService.getMessages(userId, parseConversationId(req), query.data);
+  const result = await ChatService.getMessages(
+    userId,
+    parseConversationId(req),
+    query.data,
+  );
 
   sendResponse(res, {
     success: true,
@@ -89,7 +105,11 @@ const getMessages = catchAsync(async (req: Request, res: Response) => {
 });
 
 const sendMessage = catchAsync(async (req: Request, res: Response) => {
-  const result = await ChatService.sendMessage(req.user as RequestUser, parseConversationId(req), req.body);
+  const result = await ChatService.sendMessage(
+    req.user as RequestUser,
+    parseConversationId(req),
+    req.body,
+  );
 
   sendResponse(res, {
     success: true,
@@ -100,14 +120,22 @@ const sendMessage = catchAsync(async (req: Request, res: Response) => {
 });
 
 const sendImages = catchAsync(async (req: Request, res: Response) => {
-  const files = (req.files as Record<string, Express.Multer.File[]> | undefined)?.images ?? [];
+  const files =
+    (req.files as Record<string, Express.Multer.File[]> | undefined)?.images ??
+    [];
 
-  const result = await ChatService.sendImages(req.user as RequestUser, parseConversationId(req), files, req.body);
+  const result = await ChatService.sendImages(
+    req.user as RequestUser,
+    parseConversationId(req),
+    files,
+    req.body,
+  );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: result.length === 1 ? "Photo sent" : `${result.length} photos sent`,
+    message:
+      result.length === 1 ? "Photo sent" : `${result.length} photos sent`,
     data: result,
   });
 });
@@ -128,12 +156,18 @@ const markAsRead = catchAsync(async (req: Request, res: Response) => {
 const setArchived = catchAsync(async (req: Request, res: Response) => {
   const { userId } = req.user as RequestUser;
 
-  const result = await ChatService.setArchived(userId, parseConversationId(req), req.body);
+  const result = await ChatService.setArchived(
+    userId,
+    parseConversationId(req),
+    req.body,
+  );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result.isArchived ? "Conversation archived" : "Conversation moved to inbox",
+    message: result.isArchived
+      ? "Conversation archived"
+      : "Conversation moved to inbox",
     data: result,
   });
 });

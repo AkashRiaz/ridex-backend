@@ -12,7 +12,10 @@ const SlugZodSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase words separated by -")
+  .regex(
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+    "Slug must be lowercase words separated by -",
+  )
   .max(80, "Slug must be at most 80 characters");
 
 // shape is checked against the vehicle type's attribute schema in the service
@@ -20,7 +23,9 @@ const DefaultSpecsZodSchema = z.record(z.string(), z.unknown(), {
   message: "Default specs must be an object",
 });
 
-const yearRangeRefine = <T extends { yearFrom?: number | null; yearTo?: number | null }>(
+const yearRangeRefine = <
+  T extends { yearFrom?: number | null; yearTo?: number | null },
+>(
   data: T,
 ) => !data.yearFrom || !data.yearTo || data.yearFrom <= data.yearTo;
 

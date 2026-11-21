@@ -50,7 +50,10 @@ const loadReviewer = (userId: string) =>
 // Create & eligibility
 // ============================================
 
-const getReviewEligibility = async (requestUser: RequestUser, listingId: string) => {
+const getReviewEligibility = async (
+  requestUser: RequestUser,
+  listingId: string,
+) => {
   if (!isUuid(listingId)) {
     throw new AppError(httpStatus.BAD_REQUEST, "Invalid listing ID");
   }
@@ -67,7 +70,9 @@ const getReviewEligibility = async (requestUser: RequestUser, listingId: string)
   const [eligibility, existing] = await Promise.all([
     canReview(await loadReviewer(requestUser.userId), listing),
     prisma.review.findUnique({
-      where: { reviewerId_listingId: { reviewerId: requestUser.userId, listingId } },
+      where: {
+        reviewerId_listingId: { reviewerId: requestUser.userId, listingId },
+      },
       include: reviewInclude,
     }),
   ]);
@@ -75,7 +80,10 @@ const getReviewEligibility = async (requestUser: RequestUser, listingId: string)
   return { ...eligibility, existingReview: existing };
 };
 
-const createReview = async (requestUser: RequestUser, payload: ICreateReviewPayload) => {
+const createReview = async (
+  requestUser: RequestUser,
+  payload: ICreateReviewPayload,
+) => {
   const listing = await prisma.listing.findUnique({
     where: { id: payload.listingId },
     select: { id: true, sellerId: true, status: true, isDeleted: true },
@@ -85,11 +93,16 @@ const createReview = async (requestUser: RequestUser, payload: ICreateReviewPayl
     throw new AppError(httpStatus.NOT_FOUND, "Listing not found");
   }
 
-  const eligibility = await canReview(await loadReviewer(requestUser.userId), listing);
+  const eligibility = await canReview(
+    await loadReviewer(requestUser.userId),
+    listing,
+  );
 
   if (!eligibility.allowed) {
     throw new AppError(
-      eligibility.code === "ALREADY_REVIEWED" ? httpStatus.CONFLICT : httpStatus.FORBIDDEN,
+      eligibility.code === "ALREADY_REVIEWED"
+        ? httpStatus.CONFLICT
+        : httpStatus.FORBIDDEN,
       eligibility.reason,
     );
   }
@@ -129,8 +142,14 @@ const createReview = async (requestUser: RequestUser, payload: ICreateReviewPayl
  * Public list for a seller (or a listing). Includes a rating summary.
  */
 const getReviews = async (query: IQuery) => {
-  const sellerId = typeof query.seller === "string" && isUuid(query.seller) ? query.seller : undefined;
-  const listingId = typeof query.listing === "string" && isUuid(query.listing) ? query.listing : undefined;
+  const sellerId =
+    typeof query.seller === "string" && isUuid(query.seller)
+      ? query.seller
+      : undefined;
+  const listingId =
+    typeof query.listing === "string" && isUuid(query.listing)
+      ? query.listing
+      : undefined;
 
   if (!sellerId && !listingId) {
     throw new AppError(httpStatus.BAD_REQUEST, "Filter by seller or listing");
@@ -144,7 +163,8 @@ const getReviews = async (query: IQuery) => {
   if (listingId) andConditions.push({ listingId });
 
   const rating = Number(query.rating);
-  const ratingFilter = Number.isInteger(rating) && rating >= 1 && rating <= 5 ? { rating } : {};
+  const ratingFilter =
+    Number.isInteger(rating) && rating >= 1 && rating <= 5 ? { rating } : {};
 
   const orderBy: Prisma.ReviewOrderByWithRelationInput =
     query.sortBy === "rating"
@@ -167,13 +187,21 @@ const getReviews = async (query: IQuery) => {
     }),
   ]);
 
-  const counts = Object.fromEntries([1, 2, 3, 4, 5].map((star) => [star, 0])) as Record<number, number>;
+  const counts = Object.fromEntries(
+    [1, 2, 3, 4, 5].map((star) => [star, 0]),
+  ) as Record<number, number>;
   for (const row of distribution) counts[row.rating] = row._count._all;
-  const totalCount = Object.values(counts).reduce((sum, value) => sum + value, 0);
+  const totalCount = Object.values(counts).reduce(
+    (sum, value) => sum + value,
+    0,
+  );
   const average =
     totalCount === 0
       ? 0
-      : Object.entries(counts).reduce((sum, [star, count]) => sum + Number(star) * count, 0) / totalCount;
+      : Object.entries(counts).reduce(
+          (sum, [star, count]) => sum + Number(star) * count,
+          0,
+        ) / totalCount;
 
   return {
     data: reviews,
@@ -194,7 +222,13 @@ const getGivenReviews = async (userId: string, query: IQuery) => {
   const where = { reviewerId: userId };
 
   const [reviews, total] = await Promise.all([
-    prisma.review.findMany({ where, orderBy: { createdAt: "desc" }, take: limit, skip, include: reviewInclude }),
+    prisma.review.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip,
+      include: reviewInclude,
+    }),
     prisma.review.count({ where }),
   ]);
 
@@ -217,7 +251,13 @@ const getReceivedReviews = async (userId: string, query: IQuery) => {
   };
 
   const [reviews, total] = await Promise.all([
-    prisma.review.findMany({ where, orderBy: { createdAt: "desc" }, take: limit, skip, include: reviewInclude }),
+    prisma.review.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip,
+      include: reviewInclude,
+    }),
     prisma.review.count({ where }),
   ]);
 
@@ -231,11 +271,18 @@ const getReceivedReviews = async (userId: string, query: IQuery) => {
 // Changes
 // ============================================
 
-const updateReview = async (requestUser: RequestUser, id: string, payload: IUpdateReviewPayload) => {
+const updateReview = async (
+  requestUser: RequestUser,
+  id: string,
+  payload: IUpdateReviewPayload,
+) => {
   const review = await findReviewOrThrow(id);
 
   if (review.reviewerId !== requestUser.userId) {
-    throw new AppError(httpStatus.FORBIDDEN, "You can only edit your own reviews");
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You can only edit your own reviews",
+    );
   }
 
   if (!isWithinEditWindow(review.createdAt)) {
@@ -261,13 +308,21 @@ const updateReview = async (requestUser: RequestUser, id: string, payload: IUpda
   });
 };
 
-const deleteReview = async (requestUser: RequestUser, id: string, meta: IRequestMeta) => {
+const deleteReview = async (
+  requestUser: RequestUser,
+  id: string,
+  meta: IRequestMeta,
+) => {
   const review = await findReviewOrThrow(id);
 
-  const isAdmin = requestUser.role === Role.ADMIN || requestUser.role === Role.SUPER_ADMIN;
+  const isAdmin =
+    requestUser.role === Role.ADMIN || requestUser.role === Role.SUPER_ADMIN;
 
   if (review.reviewerId !== requestUser.userId && !isAdmin) {
-    throw new AppError(httpStatus.FORBIDDEN, "You can only delete your own reviews");
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You can only delete your own reviews",
+    );
   }
 
   await prisma.$transaction(async (tx) => {
@@ -276,22 +331,38 @@ const deleteReview = async (requestUser: RequestUser, id: string, meta: IRequest
 
     if (review.reviewerId !== requestUser.userId) {
       await createAuditLog(
-        { userId: requestUser.userId, action: AuditAction.DELETE, entity: "Review", entityId: id, ...meta },
+        {
+          userId: requestUser.userId,
+          action: AuditAction.DELETE,
+          entity: "Review",
+          entityId: id,
+          ...meta,
+        },
         tx,
       );
     }
   });
 };
 
-const replyToReview = async (requestUser: RequestUser, id: string, payload: IReplyToReviewPayload) => {
+const replyToReview = async (
+  requestUser: RequestUser,
+  id: string,
+  payload: IReplyToReviewPayload,
+) => {
   const review = await findReviewOrThrow(id);
 
   if (review.sellerId !== requestUser.userId) {
-    throw new AppError(httpStatus.FORBIDDEN, "Only the reviewed seller can reply");
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Only the reviewed seller can reply",
+    );
   }
 
   if (review.sellerReply) {
-    throw new AppError(httpStatus.CONFLICT, "You have already replied to this review");
+    throw new AppError(
+      httpStatus.CONFLICT,
+      "You have already replied to this review",
+    );
   }
 
   const updated = await prisma.review.update({

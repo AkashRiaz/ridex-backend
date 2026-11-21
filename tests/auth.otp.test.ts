@@ -39,7 +39,9 @@ const fakeRedis = {
 
 vi.mock("../src/app/lib/redis", () => ({ redisClient: fakeRedis }));
 
-const { storeOtp, verifyOtp } = await import("../src/app/module/auth/auth.utils");
+const { storeOtp, verifyOtp } = await import(
+  "../src/app/module/auth/auth.utils"
+);
 
 describe("OTP lifecycle", () => {
   beforeEach(() => store.clear());

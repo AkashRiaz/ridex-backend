@@ -37,7 +37,11 @@ export const ReplyToReviewZodSchema = z.object({
 export const ReviewVisibilityZodSchema = z
   .object({
     isHidden: z.boolean({ message: "isHidden must be true or false" }),
-    reason: z.string().trim().max(300, "Reason must be at most 300 characters").optional(),
+    reason: z
+      .string()
+      .trim()
+      .max(300, "Reason must be at most 300 characters")
+      .optional(),
   })
   .refine((data) => !data.isHidden || Boolean(data.reason), {
     message: "A reason is required when hiding a review",

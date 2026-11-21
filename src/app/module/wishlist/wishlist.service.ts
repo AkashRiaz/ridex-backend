@@ -10,7 +10,10 @@ import { IWishlistToggleResult } from "./wishlist.interface";
 
 const MAX_IDS = 500;
 
-const addToWishlist = async (userId: string, listingId: string): Promise<IWishlistToggleResult> => {
+const addToWishlist = async (
+  userId: string,
+  listingId: string,
+): Promise<IWishlistToggleResult> => {
   const listing = await prisma.listing.findFirst({
     where: { id: listingId, isDeleted: false },
     select: { id: true, status: true, sellerId: true },
@@ -25,14 +28,22 @@ const addToWishlist = async (userId: string, listingId: string): Promise<IWishli
   }
 
   if (listing.sellerId === userId) {
-    throw new AppError(httpStatus.BAD_REQUEST, "You cannot save your own listing");
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "You cannot save your own listing",
+    );
   }
 
   try {
     await prisma.wishlistItem.create({ data: { userId, listingId } });
   } catch (error) {
     // already saved — saving twice is not an error
-    if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
+    if (
+      !(
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      )
+    ) {
       throw error;
     }
   }
@@ -73,7 +84,9 @@ const getMyWishlist = async (userId: string, query: IQuery) => {
     data: items.map((item) => ({
       ...toListingCard(item.listing),
       savedAt: item.createdAt,
-      isAvailable: item.listing.status === ListingStatus.APPROVED && !item.listing.isDeleted,
+      isAvailable:
+        item.listing.status === ListingStatus.APPROVED &&
+        !item.listing.isDeleted,
     })),
     meta: queryBuilder.buildMeta(page, limit, total),
   };

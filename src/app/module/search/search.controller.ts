@@ -5,7 +5,9 @@ import { sendResponse } from "../../utils/sendResponse";
 import { SearchService } from "./search.service";
 
 const searchListings = catchAsync(async (req: Request, res: Response) => {
-  const result = await SearchService.searchListings(req.query as Record<string, unknown>);
+  const result = await SearchService.searchListings(
+    req.query as Record<string, unknown>,
+  );
 
   sendResponse(res, {
     success: true,
@@ -17,7 +19,9 @@ const searchListings = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getSearchFilters = catchAsync(async (req: Request, res: Response) => {
-  const result = await SearchService.getSearchFilters(req.query as Record<string, unknown>);
+  const result = await SearchService.getSearchFilters(
+    req.query as Record<string, unknown>,
+  );
 
   sendResponse(res, {
     success: true,
@@ -27,7 +31,19 @@ const getSearchFilters = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getHomeData = catchAsync(async (_req: Request, res: Response) => {
+  const result = await SearchService.getHomeData();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Homepage data retrieved successfully",
+    data: result,
+  });
+});
+
 export const SearchController = {
   searchListings,
   getSearchFilters,
+  getHomeData,
 };

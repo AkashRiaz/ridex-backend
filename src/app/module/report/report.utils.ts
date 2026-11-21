@@ -1,9 +1,16 @@
 import httpStatus from "http-status";
-import { ReportStatus, ReportTargetType, Role } from "../../../generated/prisma/enums";
+import {
+  ReportStatus,
+  ReportTargetType,
+  Role,
+} from "../../../generated/prisma/enums";
 import { AppError } from "../../utils/AppError";
 import { TReportAction } from "./report.interface";
 
-export const ACTIVE_REPORT_STATUSES: ReportStatus[] = [ReportStatus.OPEN, ReportStatus.IN_REVIEW];
+export const ACTIVE_REPORT_STATUSES: ReportStatus[] = [
+  ReportStatus.OPEN,
+  ReportStatus.IN_REVIEW,
+];
 
 export const REPORTS_PER_HOUR = 10;
 
@@ -17,7 +24,10 @@ type TReportTargetColumns = {
 /*
  * targetType + targetId → the typed foreign-key column that stores it.
  */
-export const targetColumns = (targetType: ReportTargetType, targetId: string): TReportTargetColumns => {
+export const targetColumns = (
+  targetType: ReportTargetType,
+  targetId: string,
+): TReportTargetColumns => {
   switch (targetType) {
     case ReportTargetType.LISTING:
       return { listingId: targetId };
@@ -31,18 +41,30 @@ export const targetColumns = (targetType: ReportTargetType, targetId: string): T
 };
 
 export const targetIdOf = (report: TReportTargetColumns) =>
-  report.listingId ?? report.reportedUserId ?? report.reviewId ?? report.messageId ?? "";
+  report.listingId ??
+  report.reportedUserId ??
+  report.reviewId ??
+  report.messageId ??
+  "";
 
-export const targetKey = (report: TReportTargetColumns & { targetType: ReportTargetType }) =>
-  `${report.targetType}:${targetIdOf(report)}`;
+export const targetKey = (
+  report: TReportTargetColumns & { targetType: ReportTargetType },
+) => `${report.targetType}:${targetIdOf(report)}`;
 
 /*
  * Which resolve action fits which target, and who may take it.
  */
-const ACTION_TARGETS: Record<Exclude<TReportAction, "NONE">, ReportTargetType[]> = {
+const ACTION_TARGETS: Record<
+  Exclude<TReportAction, "NONE">,
+  ReportTargetType[]
+> = {
   TAKE_DOWN_LISTING: [ReportTargetType.LISTING],
   // blocks the reported user, the seller of the reported listing, or the sender of the message
-  BLOCK_USER: [ReportTargetType.USER, ReportTargetType.LISTING, ReportTargetType.MESSAGE],
+  BLOCK_USER: [
+    ReportTargetType.USER,
+    ReportTargetType.LISTING,
+    ReportTargetType.MESSAGE,
+  ],
   HIDE_REVIEW: [ReportTargetType.REVIEW],
 };
 
@@ -60,7 +82,11 @@ export const assertActionAllowed = (
     );
   }
 
-  if (action === "BLOCK_USER" && actorRole !== Role.ADMIN && actorRole !== Role.SUPER_ADMIN) {
+  if (
+    action === "BLOCK_USER" &&
+    actorRole !== Role.ADMIN &&
+    actorRole !== Role.SUPER_ADMIN
+  ) {
     throw new AppError(httpStatus.FORBIDDEN, "Only admins can block users");
   }
 };
@@ -76,7 +102,8 @@ export const sortByPriority = <T extends { key: string; createdAt: Date }>(
     .slice()
     .sort(
       (first, second) =>
-        (openCountByKey.get(second.key) ?? 0) - (openCountByKey.get(first.key) ?? 0) ||
+        (openCountByKey.get(second.key) ?? 0) -
+          (openCountByKey.get(first.key) ?? 0) ||
         first.createdAt.getTime() - second.createdAt.getTime(),
     );
 

@@ -60,10 +60,10 @@ const buildSearch = (searchTerm: string | undefined, fields: string[]) => {
       field
         .split(".")
         .reverse()
-        .reduce<Record<string, unknown>>(
-          (acc, key) => ({ [key]: acc }),
-          { contains: term, mode: "insensitive" },
-        ),
+        .reduce<Record<string, unknown>>((acc, key) => ({ [key]: acc }), {
+          contains: term,
+          mode: "insensitive",
+        }),
     ),
   };
 };

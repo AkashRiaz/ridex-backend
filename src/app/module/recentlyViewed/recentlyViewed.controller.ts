@@ -10,7 +10,10 @@ import { RecentlyViewedService } from "./recentlyViewed.service";
 const getMyRecentlyViewed = catchAsync(async (req: Request, res: Response) => {
   const { userId } = req.user as RequestUser;
 
-  const result = await RecentlyViewedService.getMyRecentlyViewed(userId, req.query);
+  const result = await RecentlyViewedService.getMyRecentlyViewed(
+    userId,
+    req.query,
+  );
 
   sendResponse(res, {
     success: true,

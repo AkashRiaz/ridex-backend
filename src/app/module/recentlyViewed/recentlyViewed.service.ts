@@ -1,17 +1,29 @@
 import { ListingStatus } from "../../../generated/prisma/enums";
 import { prisma } from "../../lib/prisma";
 import { listingCardInclude, toListingCard } from "../listing/listing.service";
-import { IRecentlyViewedQuery, RECENTLY_VIEWED_LIMIT } from "./recentlyViewed.interface";
+import {
+  IRecentlyViewedQuery,
+  RECENTLY_VIEWED_LIMIT,
+} from "./recentlyViewed.interface";
 import { recordRecentlyViewed } from "./recentlyViewed.utils";
 
-const getMyRecentlyViewed = async (userId: string, query: IRecentlyViewedQuery) => {
-  const limit = Math.min(Math.max(Number(query.limit) || RECENTLY_VIEWED_LIMIT, 1), RECENTLY_VIEWED_LIMIT);
+const getMyRecentlyViewed = async (
+  userId: string,
+  query: IRecentlyViewedQuery,
+) => {
+  const limit = Math.min(
+    Math.max(Number(query.limit) || RECENTLY_VIEWED_LIMIT, 1),
+    RECENTLY_VIEWED_LIMIT,
+  );
 
   const items = await prisma.recentlyViewed.findMany({
     where: {
       userId,
       // removed listings disappear; sold ones stay (flagged by status)
-      listing: { isDeleted: false, status: { in: [ListingStatus.APPROVED, ListingStatus.SOLD] } },
+      listing: {
+        isDeleted: false,
+        status: { in: [ListingStatus.APPROVED, ListingStatus.SOLD] },
+      },
     },
     orderBy: { viewedAt: "desc" },
     take: limit,

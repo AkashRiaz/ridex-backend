@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { generateSlug, generateUniqueSlug } from "../src/app/helper/generateSlug";
+import {
+  generateSlug,
+  generateUniqueSlug,
+} from "../src/app/helper/generateSlug";
 import { isUuid } from "../src/app/helper/isUuid";
 
 describe("generateSlug", () => {

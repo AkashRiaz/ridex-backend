@@ -86,44 +86,49 @@ export const loadAuthUser = async (claims: {
 // auth(Role.ADMIN, Role.SELLER)
 // auth() => any logged-in user
 export const auth = (...requiredRoles: Role[]) => {
-  return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    const authorization = req.headers.authorization?.trim();
-    const bearerToken = authorization?.startsWith("Bearer ")
-      ? authorization.slice(7).trim()
-      : undefined;
-    const cookieToken =
-      typeof req.cookies?.accessToken === "string"
-        ? req.cookies.accessToken.trim()
+  return catchAsync(
+    async (req: Request, _res: Response, next: NextFunction) => {
+      const authorization = req.headers.authorization?.trim();
+      const bearerToken = authorization?.startsWith("Bearer ")
+        ? authorization.slice(7).trim()
         : undefined;
-    const token = bearerToken || cookieToken;
+      const cookieToken =
+        typeof req.cookies?.accessToken === "string"
+          ? req.cookies.accessToken.trim()
+          : undefined;
+      const token = bearerToken || cookieToken;
 
-    if (!token) {
-      throw new AppError(
-        httpStatus.UNAUTHORIZED,
-        "You are not logged in. Please log in to access this resource.",
+      if (!token) {
+        throw new AppError(
+          httpStatus.UNAUTHORIZED,
+          "You are not logged in. Please log in to access this resource.",
+        );
+      }
+
+      const verifiedToken = jwtUtils.verifyToken(
+        token,
+        config.jwt_access_secret,
       );
-    }
 
-    const verifiedToken = jwtUtils.verifyToken(token, config.jwt_access_secret);
+      if (!verifiedToken.success) {
+        throw new AppError(
+          httpStatus.UNAUTHORIZED,
+          "Invalid or expired access token. Please log in again.",
+        );
+      }
 
-    if (!verifiedToken.success) {
-      throw new AppError(
-        httpStatus.UNAUTHORIZED,
-        "Invalid or expired access token. Please log in again.",
-      );
-    }
+      const { userId, role, pwdAt } = verifiedToken.data as JwtPayload;
 
-    const { userId, role, pwdAt } = verifiedToken.data as JwtPayload;
+      if (requiredRoles.length && !requiredRoles.includes(role)) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          "Forbidden. You don't have permission to access this resource.",
+        );
+      }
 
-    if (requiredRoles.length && !requiredRoles.includes(role)) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        "Forbidden. You don't have permission to access this resource.",
-      );
-    }
+      req.user = await loadAuthUser({ userId, role, pwdAt });
 
-    req.user = await loadAuthUser({ userId, role, pwdAt });
-
-    next();
-  });
+      next();
+    },
+  );
 };

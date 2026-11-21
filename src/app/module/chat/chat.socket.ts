@@ -2,7 +2,10 @@ import { TAppSocket, emitToUser, revalidateSocketUser } from "../../lib/socket";
 import { AppError } from "../../utils/AppError";
 import { CHAT_ROLES } from "./chat.utils";
 import { ChatService } from "./chat.service";
-import { SocketConversationZodSchema, SocketSendMessageZodSchema } from "./chat.validation";
+import {
+  SocketConversationZodSchema,
+  SocketSendMessageZodSchema,
+} from "./chat.validation";
 
 /*
  * Client → server chat events. Writes go through ChatService, exactly like
@@ -13,17 +16,26 @@ import { SocketConversationZodSchema, SocketSendMessageZodSchema } from "./chat.
  *   conversation:read  { conversationId }                                    ack → { success }
  */
 
-type TAck = (response: { success: boolean; statusCode?: number; message?: string; data?: unknown }) => void;
+type TAck = (response: {
+  success: boolean;
+  statusCode?: number;
+  message?: string;
+  data?: unknown;
+}) => void;
 
 const TYPING_THROTTLE_MS = 2000;
 
 const toAckError = (error: unknown) => ({
   success: false,
   statusCode: error instanceof AppError ? error.statusCode : 500,
-  message: error instanceof AppError ? error.message : "Something went wrong. Please try again.",
+  message:
+    error instanceof AppError
+      ? error.message
+      : "Something went wrong. Please try again.",
 });
 
-const safeAck = (ack: unknown): TAck => (typeof ack === "function" ? (ack as TAck) : () => undefined);
+const safeAck = (ack: unknown): TAck =>
+  typeof ack === "function" ? (ack as TAck) : () => undefined;
 
 export const registerChatSocketHandlers = (socket: TAppSocket) => {
   if (!CHAT_ROLES.includes(socket.data.user.role)) return;
@@ -36,7 +48,10 @@ export const registerChatSocketHandlers = (socket: TAppSocket) => {
     const cached = counterpartCache.get(conversationId);
     if (cached) return cached;
 
-    const counterpartId = await ChatService.getCounterpartId(socket.data.user.userId, conversationId);
+    const counterpartId = await ChatService.getCounterpartId(
+      socket.data.user.userId,
+      conversationId,
+    );
     if (counterpartId) counterpartCache.set(conversationId, counterpartId);
 
     return counterpartId;
@@ -47,7 +62,11 @@ export const registerChatSocketHandlers = (socket: TAppSocket) => {
     const parsed = SocketSendMessageZodSchema.safeParse(payload);
 
     if (!parsed.success) {
-      reply({ success: false, statusCode: 400, message: parsed.error.issues.map((issue) => issue.message).join(", ") });
+      reply({
+        success: false,
+        statusCode: 400,
+        message: parsed.error.issues.map((issue) => issue.message).join(", "),
+      });
       return;
     }
 
@@ -71,7 +90,8 @@ export const registerChatSocketHandlers = (socket: TAppSocket) => {
 
     if (isTyping) {
       const now = Date.now();
-      if (now - (lastTypingAt.get(conversationId) ?? 0) < TYPING_THROTTLE_MS) return;
+      if (now - (lastTypingAt.get(conversationId) ?? 0) < TYPING_THROTTLE_MS)
+        return;
       lastTypingAt.set(conversationId, now);
     } else {
       lastTypingAt.delete(conversationId);
@@ -99,7 +119,11 @@ export const registerChatSocketHandlers = (socket: TAppSocket) => {
     const parsed = SocketConversationZodSchema.safeParse(payload);
 
     if (!parsed.success) {
-      reply({ success: false, statusCode: 400, message: "Invalid conversation ID" });
+      reply({
+        success: false,
+        statusCode: 400,
+        message: "Invalid conversation ID",
+      });
       return;
     }
 
@@ -107,7 +131,10 @@ export const registerChatSocketHandlers = (socket: TAppSocket) => {
     if (!user) return;
 
     try {
-      const data = await ChatService.markAsRead(user.userId, parsed.data.conversationId);
+      const data = await ChatService.markAsRead(
+        user.userId,
+        parsed.data.conversationId,
+      );
       reply({ success: true, statusCode: 200, data });
     } catch (error) {
       reply(toAckError(error));
@@ -119,7 +146,11 @@ export const registerChatSocketHandlers = (socket: TAppSocket) => {
     for (const conversationId of lastTypingAt.keys()) {
       const counterpartId = counterpartCache.get(conversationId);
       if (counterpartId) {
-        emitToUser(counterpartId, "typing", { conversationId, userId: socket.data.user.userId, isTyping: false });
+        emitToUser(counterpartId, "typing", {
+          conversationId,
+          userId: socket.data.user.userId,
+          isTyping: false,
+        });
       }
     }
   });

@@ -47,7 +47,15 @@ const reportInclude = {
     },
   },
   reportedUser: {
-    select: { id: true, name: true, email: true, role: true, status: true, isDeleted: true, createdAt: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      status: true,
+      isDeleted: true,
+      createdAt: true,
+    },
   },
   review: {
     select: {
@@ -67,7 +75,16 @@ const reportInclude = {
       imageUrl: true,
       createdAt: true,
       conversationId: true,
-      sender: { select: { id: true, name: true, email: true, role: true, status: true, isDeleted: true } },
+      sender: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          status: true,
+          isDeleted: true,
+        },
+      },
     },
   },
 } satisfies Prisma.ReportInclude;
@@ -81,7 +98,10 @@ const PRIORITY_SCAN_LIMIT = 1000;
 /*
  * Confirms the target exists and the reporter is not reporting themselves.
  */
-const assertReportableTarget = async (reporterId: string, payload: ICreateReportPayload) => {
+const assertReportableTarget = async (
+  reporterId: string,
+  payload: ICreateReportPayload,
+) => {
   switch (payload.targetType) {
     case ReportTargetType.LISTING: {
       const listing = await prisma.listing.findFirst({
@@ -89,16 +109,23 @@ const assertReportableTarget = async (reporterId: string, payload: ICreateReport
         select: { sellerId: true },
       });
 
-      if (!listing) throw new AppError(httpStatus.NOT_FOUND, "Listing not found");
+      if (!listing)
+        throw new AppError(httpStatus.NOT_FOUND, "Listing not found");
       if (listing.sellerId === reporterId) {
-        throw new AppError(httpStatus.BAD_REQUEST, "You cannot report your own listing");
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "You cannot report your own listing",
+        );
       }
       return;
     }
 
     case ReportTargetType.USER: {
       if (payload.targetId === reporterId) {
-        throw new AppError(httpStatus.BAD_REQUEST, "You cannot report yourself");
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "You cannot report yourself",
+        );
       }
 
       const user = await prisma.user.findFirst({
@@ -118,7 +145,10 @@ const assertReportableTarget = async (reporterId: string, payload: ICreateReport
 
       if (!review) throw new AppError(httpStatus.NOT_FOUND, "Review not found");
       if (review.reviewerId === reporterId) {
-        throw new AppError(httpStatus.BAD_REQUEST, "You cannot report your own review");
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "You cannot report your own review",
+        );
       }
       return;
     }
@@ -134,14 +164,22 @@ const assertReportableTarget = async (reporterId: string, payload: ICreateReport
       });
 
       const isParticipant =
-        message?.conversation.buyerId === reporterId || message?.conversation.sellerId === reporterId;
+        message?.conversation.buyerId === reporterId ||
+        message?.conversation.sellerId === reporterId;
 
-      if (!message || !isParticipant) throw new AppError(httpStatus.NOT_FOUND, "Message not found");
+      if (!message || !isParticipant)
+        throw new AppError(httpStatus.NOT_FOUND, "Message not found");
       if (!message.senderId) {
-        throw new AppError(httpStatus.BAD_REQUEST, "System messages cannot be reported");
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "System messages cannot be reported",
+        );
       }
       if (message.senderId === reporterId) {
-        throw new AppError(httpStatus.BAD_REQUEST, "You cannot report your own message");
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "You cannot report your own message",
+        );
       }
       return;
     }
@@ -169,7 +207,10 @@ const enforceRateLimit = async (userId: string) => {
   }
 };
 
-const createReport = async (requestUser: RequestUser, payload: ICreateReportPayload) => {
+const createReport = async (
+  requestUser: RequestUser,
+  payload: ICreateReportPayload,
+) => {
   await assertReportableTarget(requestUser.userId, payload);
 
   const columns = targetColumns(payload.targetType, payload.targetId);
@@ -185,7 +226,10 @@ const createReport = async (requestUser: RequestUser, payload: ICreateReportPayl
   });
 
   if (duplicate) {
-    throw new AppError(httpStatus.CONFLICT, "You have already reported this. Our team is reviewing it.");
+    throw new AppError(
+      httpStatus.CONFLICT,
+      "You have already reported this. Our team is reviewing it.",
+    );
   }
 
   await enforceRateLimit(requestUser.userId);
@@ -270,7 +314,10 @@ const getReports = async (query: IQuery) => {
     andConditions.push({ status: { in: ACTIVE_REPORT_STATUSES } });
   }
 
-  if (query.targetType && Object.values(ReportTargetType).includes(query.targetType)) {
+  if (
+    query.targetType &&
+    Object.values(ReportTargetType).includes(query.targetType)
+  ) {
     andConditions.push({ targetType: query.targetType });
   }
 
@@ -284,7 +331,13 @@ const getReports = async (query: IQuery) => {
 
   if (query.sortBy === "newest") {
     const [rows, count] = await Promise.all([
-      prisma.report.findMany({ where, orderBy: { createdAt: "desc" }, take: limit, skip, select: { id: true } }),
+      prisma.report.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip,
+        select: { id: true },
+      }),
       prisma.report.count({ where }),
     ]);
     pageIds = rows.map((row) => row.id);
@@ -336,7 +389,10 @@ const getReports = async (query: IQuery) => {
 };
 
 const getReportById = async (id: string) => {
-  const report = await prisma.report.findUnique({ where: { id }, include: reportInclude });
+  const report = await prisma.report.findUnique({
+    where: { id },
+    include: reportInclude,
+  });
 
   if (!report) {
     throw new AppError(httpStatus.NOT_FOUND, "Report not found");
@@ -385,7 +441,12 @@ const getReportById = async (id: string) => {
       ).reverse()
     : [];
 
-  return { ...report, targetId: targetIdOf(report), otherReports, messageContext };
+  return {
+    ...report,
+    targetId: targetIdOf(report),
+    otherReports,
+    messageContext,
+  };
 };
 
 // ============================================
@@ -402,14 +463,20 @@ const updateReport = async (
   payload: IUpdateReportPayload,
   meta: IRequestMeta,
 ) => {
-  const report = await prisma.report.findUnique({ where: { id }, include: reportInclude });
+  const report = await prisma.report.findUnique({
+    where: { id },
+    include: reportInclude,
+  });
 
   if (!report) {
     throw new AppError(httpStatus.NOT_FOUND, "Report not found");
   }
 
   if (!ACTIVE_REPORT_STATUSES.includes(report.status)) {
-    throw new AppError(httpStatus.CONFLICT, "This report has already been closed");
+    throw new AppError(
+      httpStatus.CONFLICT,
+      "This report has already been closed",
+    );
   }
 
   const action = payload.action ?? "NONE";
@@ -420,7 +487,8 @@ const updateReport = async (
   if (payload.status === ReportStatus.RESOLVED && action !== "NONE") {
     if (action === "TAKE_DOWN_LISTING" && report.listing) {
       const isLive =
-        report.listing.status === ListingStatus.APPROVED || report.listing.status === ListingStatus.PENDING;
+        report.listing.status === ListingStatus.APPROVED ||
+        report.listing.status === ListingStatus.PENDING;
 
       if (isLive) {
         await ListingService.updateListingStatus(
@@ -433,17 +501,32 @@ const updateReport = async (
     }
 
     if (action === "BLOCK_USER") {
-      const userId = report.reportedUser?.id ?? report.listing?.sellerId ?? report.message?.sender?.id;
+      const userId =
+        report.reportedUser?.id ??
+        report.listing?.sellerId ??
+        report.message?.sender?.id;
       const status =
-        report.reportedUser?.status ?? report.listing?.seller.status ?? report.message?.sender?.status;
+        report.reportedUser?.status ??
+        report.listing?.seller.status ??
+        report.message?.sender?.status;
 
       if (userId && status !== UserStatus.BLOCKED) {
-        await UserService.updateUserStatus(staff, userId, { status: "BLOCKED", reason: note }, meta);
+        await UserService.updateUserStatus(
+          staff,
+          userId,
+          { status: "BLOCKED", reason: note },
+          meta,
+        );
       }
     }
 
     if (action === "HIDE_REVIEW" && report.review && !report.review.isHidden) {
-      await ReviewService.setReviewVisibility(staff, report.review.id, { isHidden: true, reason: note }, meta);
+      await ReviewService.setReviewVisibility(
+        staff,
+        report.review.id,
+        { isHidden: true, reason: note },
+        meta,
+      );
     }
   }
 
@@ -509,7 +592,10 @@ const updateReport = async (
   });
 
   // Side effects AFTER commit
-  if (payload.status === ReportStatus.RESOLVED || payload.status === ReportStatus.DISMISSED) {
+  if (
+    payload.status === ReportStatus.RESOLVED ||
+    payload.status === ReportStatus.DISMISSED
+  ) {
     const closedStatus = payload.status;
 
     for (const closed of closedReports) {

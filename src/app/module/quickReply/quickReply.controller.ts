@@ -46,7 +46,11 @@ const createQuickReply = catchAsync(async (req: Request, res: Response) => {
 const updateQuickReply = catchAsync(async (req: Request, res: Response) => {
   const { userId } = req.user as RequestUser;
 
-  const result = await QuickReplyService.updateQuickReply(userId, parseId(req), req.body);
+  const result = await QuickReplyService.updateQuickReply(
+    userId,
+    parseId(req),
+    req.body,
+  );
 
   sendResponse(res, {
     success: true,

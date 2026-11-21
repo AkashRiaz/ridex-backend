@@ -5,14 +5,20 @@ import { ConversationWhereInput } from "../../../generated/prisma/models";
 import { config } from "../../config";
 import { appEvents } from "../../events/appEvents";
 import { queryBuilder } from "../../helper/queryBuilder";
-import { sellerSummarySelect, toSellerSummary } from "../../helper/sellerBadges";
+import {
+  sellerSummarySelect,
+  toSellerSummary,
+} from "../../helper/sellerBadges";
 import { IQuery } from "../../interfaces";
 import { prisma } from "../../lib/prisma";
 import { emitToUser, isUserOnline } from "../../lib/socket";
 import { RequestUser } from "../../middleware/checkAuth";
 import { AppError } from "../../utils/AppError";
 import { consumeRateLimit } from "../../utils/redisRateLimit";
-import { deleteFromCloudinary, uploadToCloudinary } from "../../utils/uploadToCloudinary";
+import {
+  deleteFromCloudinary,
+  uploadToCloudinary,
+} from "../../utils/uploadToCloudinary";
 import { findBuiltInQuickReply } from "../quickReply/quickReply.utils";
 import { UserBlockService } from "../userBlock/userBlock.service";
 import {
@@ -67,7 +73,9 @@ const conversationInclude = {
   seller: { select: participantSelect },
 } satisfies Prisma.ConversationInclude;
 
-type TConversationRow = Prisma.ConversationGetPayload<{ include: typeof conversationInclude }>;
+type TConversationRow = Prisma.ConversationGetPayload<{
+  include: typeof conversationInclude;
+}>;
 
 export const messageSelect = {
   id: true,
@@ -92,7 +100,11 @@ const toParticipant = (user: TParticipantRow) =>
         role: user.role,
         ratingAverage: 0,
         ratingCount: 0,
-        badges: { phoneVerified: false, idVerified: false, dealerVerified: false },
+        badges: {
+          phoneVerified: false,
+          idVerified: false,
+          dealerVerified: false,
+        },
         isDeleted: true,
         isOnline: false,
       }
@@ -105,11 +117,15 @@ const toParticipant = (user: TParticipantRow) =>
 /*
  * The conversation as one participant sees it.
  */
-const toConversationSummary = (conversation: TConversationRow, userId: string) => {
+const toConversationSummary = (
+  conversation: TConversationRow,
+  userId: string,
+) => {
   const side = sideOf(conversation, userId) as TConversationSide;
   const mine = sideFields(side);
   const theirs = sideFields(otherSide(side));
-  const counterpart = side === "buyer" ? conversation.seller : conversation.buyer;
+  const counterpart =
+    side === "buyer" ? conversation.seller : conversation.buyer;
 
   return {
     id: conversation.id,
@@ -139,7 +155,10 @@ const toConversationSummary = (conversation: TConversationRow, userId: string) =
 // Loading & access
 // ============================================
 
-const findConversationForUser = async (userId: string, conversationId: string) => {
+const findConversationForUser = async (
+  userId: string,
+  conversationId: string,
+) => {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
     include: conversationInclude,
@@ -150,22 +169,36 @@ const findConversationForUser = async (userId: string, conversationId: string) =
     throw new AppError(httpStatus.NOT_FOUND, "Conversation not found");
   }
 
-  return { conversation, side: sideOf(conversation, userId) as TConversationSide };
+  return {
+    conversation,
+    side: sideOf(conversation, userId) as TConversationSide,
+  };
 };
 
-const getReplyState = async (conversation: TConversationRow, side: TConversationSide) => {
-  const counterpart = side === "buyer" ? conversation.seller : conversation.buyer;
+const getReplyState = async (
+  conversation: TConversationRow,
+  side: TConversationSide,
+) => {
+  const counterpart =
+    side === "buyer" ? conversation.seller : conversation.buyer;
   const myId = participantIdOf(conversation, side);
 
   const block = await UserBlockService.getBlockState(myId, counterpart.id);
 
   return {
     block,
-    result: evaluateReplyState({ listing: conversation.listing, counterpart, block }),
+    result: evaluateReplyState({
+      listing: conversation.listing,
+      counterpart,
+      block,
+    }),
   };
 };
 
-const assertCanReply = async (conversation: TConversationRow, side: TConversationSide) => {
+const assertCanReply = async (
+  conversation: TConversationRow,
+  side: TConversationSide,
+) => {
   const { result } = await getReplyState(conversation, side);
 
   if (!result.allowed) {
@@ -174,10 +207,18 @@ const assertCanReply = async (conversation: TConversationRow, side: TConversatio
 };
 
 const assertMessageRate = async (userId: string, cost = 1) => {
-  const allowed = await consumeRateLimit(chatRateKeys.message(userId), config.chat_message_rate_limit, 60, cost);
+  const allowed = await consumeRateLimit(
+    chatRateKeys.message(userId),
+    config.chat_message_rate_limit,
+    60,
+    cost,
+  );
 
   if (!allowed) {
-    throw new AppError(httpStatus.TOO_MANY_REQUESTS, "You are sending messages too quickly. Please slow down.");
+    throw new AppError(
+      httpStatus.TOO_MANY_REQUESTS,
+      "You are sending messages too quickly. Please slow down.",
+    );
   }
 };
 
@@ -200,7 +241,9 @@ const getUnreadCount = async (userId: string) => {
   ]);
 
   return {
-    total: (asBuyer._sum.buyerUnreadCount ?? 0) + (asSeller._sum.sellerUnreadCount ?? 0),
+    total:
+      (asBuyer._sum.buyerUnreadCount ?? 0) +
+      (asSeller._sum.sellerUnreadCount ?? 0),
     conversations: asBuyer._count._all + asSeller._count._all,
   };
 };
@@ -273,14 +316,28 @@ const persistMessage = async (
       return [created, conversationAfter] as const;
     });
 
-    return { message, conversation: updated, senderHadUnread, duplicate: false };
+    return {
+      message,
+      conversation: updated,
+      senderHadUnread,
+      duplicate: false,
+    };
   } catch (error) {
     // two tabs retrying the same optimistic send at once
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002" && input.clientId) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      input.clientId
+    ) {
       const existing = await findDuplicate(senderId, input.clientId);
 
       if (existing) {
-        return { message: existing, conversation, senderHadUnread: false, duplicate: true };
+        return {
+          message: existing,
+          conversation,
+          senderHadUnread: false,
+          duplicate: true,
+        };
       }
     }
 
@@ -305,11 +362,17 @@ const broadcastMessage = async (
   }
 
   if (!message.senderId) {
-    await Promise.all([pushUnreadCount(conversation.buyerId), pushUnreadCount(conversation.sellerId)]);
+    await Promise.all([
+      pushUnreadCount(conversation.buyerId),
+      pushUnreadCount(conversation.sellerId),
+    ]);
     return;
   }
 
-  const senderSide = sideOf(conversation, message.senderId) as TConversationSide;
+  const senderSide = sideOf(
+    conversation,
+    message.senderId,
+  ) as TConversationSide;
   const recipientId = participantIdOf(conversation, otherSide(senderSide));
 
   await pushUnreadCount(recipientId);
@@ -334,9 +397,14 @@ const broadcastMessage = async (
   });
 };
 
-const resolveTextMessage = (side: TConversationSide, payload: ISendMessagePayload): TNewMessage => {
+const resolveTextMessage = (
+  side: TConversationSide,
+  payload: ISendMessagePayload,
+): TNewMessage => {
   const body = normalizeMessageBody(payload.body ?? "");
-  const quickReply = payload.quickReplyKey ? findBuiltInQuickReply(side, payload.quickReplyKey) : null;
+  const quickReply = payload.quickReplyKey
+    ? findBuiltInQuickReply(side, payload.quickReplyKey)
+    : null;
 
   if (payload.quickReplyKey && !quickReply && !body) {
     throw new AppError(httpStatus.BAD_REQUEST, "Unknown quick reply");
@@ -356,17 +424,27 @@ const resolveTextMessage = (side: TConversationSide, payload: ISendMessagePayloa
   };
 };
 
-const sendMessage = async (requestUser: RequestUser, conversationId: string, payload: ISendMessagePayload) => {
+const sendMessage = async (
+  requestUser: RequestUser,
+  conversationId: string,
+  payload: ISendMessagePayload,
+) => {
   const duplicate = await findDuplicate(requestUser.userId, payload.clientId);
 
   if (duplicate) {
     if (duplicate.conversationId !== conversationId) {
-      throw new AppError(httpStatus.CONFLICT, "This message ID was already used");
+      throw new AppError(
+        httpStatus.CONFLICT,
+        "This message ID was already used",
+      );
     }
     return duplicate;
   }
 
-  const { conversation, side } = await findConversationForUser(requestUser.userId, conversationId);
+  const { conversation, side } = await findConversationForUser(
+    requestUser.userId,
+    conversationId,
+  );
 
   await assertCanReply(conversation, side);
 
@@ -374,10 +452,17 @@ const sendMessage = async (requestUser: RequestUser, conversationId: string, pay
 
   await assertMessageRate(requestUser.userId);
 
-  const result = await persistMessage(conversation, side, requestUser.userId, input);
+  const result = await persistMessage(
+    conversation,
+    side,
+    requestUser.userId,
+    input,
+  );
 
   if (!result.duplicate) {
-    await broadcastMessage(result.conversation, result.message, { senderHadUnread: result.senderHadUnread });
+    await broadcastMessage(result.conversation, result.message, {
+      senderHadUnread: result.senderHadUnread,
+    });
   }
 
   return result.message;
@@ -397,31 +482,47 @@ const sendImages = async (
   }
 
   if (files.length > MAX_CHAT_IMAGES) {
-    throw new AppError(httpStatus.BAD_REQUEST, `You can send up to ${MAX_CHAT_IMAGES} photos at once`);
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `You can send up to ${MAX_CHAT_IMAGES} photos at once`,
+    );
   }
 
   if (files.some((file) => !CHAT_IMAGE_MIME_TYPES.includes(file.mimetype))) {
-    throw new AppError(httpStatus.UNSUPPORTED_MEDIA_TYPE, "Only JPG, PNG, WEBP or AVIF photos can be sent");
+    throw new AppError(
+      httpStatus.UNSUPPORTED_MEDIA_TYPE,
+      "Only JPG, PNG, WEBP or AVIF photos can be sent",
+    );
   }
 
-  const { conversation, side } = await findConversationForUser(requestUser.userId, conversationId);
+  const { conversation, side } = await findConversationForUser(
+    requestUser.userId,
+    conversationId,
+  );
 
   await assertCanReply(conversation, side);
   await assertMessageRate(requestUser.userId, files.length);
 
   const uploads = await Promise.allSettled(
     files.map((file) =>
-      uploadToCloudinary(file, { folder: `${config.app_name.toLowerCase()}/chat/${conversation.id}` }),
+      uploadToCloudinary(file, {
+        folder: `${config.app_name.toLowerCase()}/chat/${conversation.id}`,
+      }),
     ),
   );
 
   if (uploads.some((upload) => upload.status === "rejected")) {
     await Promise.all(
       uploads.map((upload) =>
-        upload.status === "fulfilled" ? deleteFromCloudinary(upload.value.public_id) : Promise.resolve(),
+        upload.status === "fulfilled"
+          ? deleteFromCloudinary(upload.value.public_id)
+          : Promise.resolve(),
       ),
     );
-    throw new AppError(httpStatus.BAD_GATEWAY, "Photo upload failed. Please try again.");
+    throw new AppError(
+      httpStatus.BAD_GATEWAY,
+      "Photo upload failed. Please try again.",
+    );
   }
 
   const messages = [];
@@ -458,17 +559,32 @@ const sendImages = async (
 // Start
 // ============================================
 
-const startConversation = async (requestUser: RequestUser, payload: IStartConversationPayload) => {
+const startConversation = async (
+  requestUser: RequestUser,
+  payload: IStartConversationPayload,
+) => {
   const existing = await prisma.conversation.findUnique({
-    where: { listingId_buyerId: { listingId: payload.listingId, buyerId: requestUser.userId } },
+    where: {
+      listingId_buyerId: {
+        listingId: payload.listingId,
+        buyerId: requestUser.userId,
+      },
+    },
     select: { id: true },
   });
 
   if (existing) {
     const message = await sendMessage(requestUser, existing.id, payload);
-    const { conversation } = await findConversationForUser(requestUser.userId, existing.id);
+    const { conversation } = await findConversationForUser(
+      requestUser.userId,
+      existing.id,
+    );
 
-    return { created: false, conversation: toConversationSummary(conversation, requestUser.userId), message };
+    return {
+      created: false,
+      conversation: toConversationSummary(conversation, requestUser.userId),
+      message,
+    };
   }
 
   const listing = await prisma.listing.findUnique({
@@ -502,7 +618,10 @@ const startConversation = async (requestUser: RequestUser, payload: IStartConver
           ? httpStatus.BAD_REQUEST
           : httpStatus.FORBIDDEN;
 
-    throw new AppError(statusCode, rule.allowed ? "Listing not found" : rule.reason);
+    throw new AppError(
+      statusCode,
+      rule.allowed ? "Listing not found" : rule.reason,
+    );
   }
 
   const input = resolveTextMessage("buyer", payload);
@@ -535,19 +654,30 @@ const startConversation = async (requestUser: RequestUser, payload: IStartConver
     });
   } catch (error) {
     // double-click on "Send": the other request created it first
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
       return startConversation(requestUser, payload);
     }
     throw error;
   }
 
-  const result = await persistMessage(conversation, "buyer", requestUser.userId, input);
+  const result = await persistMessage(
+    conversation,
+    "buyer",
+    requestUser.userId,
+    input,
+  );
 
   await broadcastMessage(result.conversation, result.message);
 
   return {
     created: true,
-    conversation: toConversationSummary(result.conversation, requestUser.userId),
+    conversation: toConversationSummary(
+      result.conversation,
+      requestUser.userId,
+    ),
     message: result.message,
   };
 };
@@ -560,10 +690,15 @@ const getMyConversations = async (userId: string, query: IQuery) => {
   const { page, limit, skip } = queryBuilder.buildPagination(query, 20);
 
   const sides: TConversationSide[] =
-    query.side === "buying" ? ["buyer"] : query.side === "selling" ? ["seller"] : ["buyer", "seller"];
+    query.side === "buying"
+      ? ["buyer"]
+      : query.side === "selling"
+        ? ["seller"]
+        : ["buyer", "seller"];
   const archived = query.archived === "true";
   const unreadOnly = query.unread === "true";
-  const term = typeof query.searchTerm === "string" ? query.searchTerm.trim() : "";
+  const term =
+    typeof query.searchTerm === "string" ? query.searchTerm.trim() : "";
   const contains = { contains: term, mode: "insensitive" as const };
 
   const sideConditions: ConversationWhereInput[] = sides.map((side) => {
@@ -576,7 +711,9 @@ const getMyConversations = async (userId: string, query: IQuery) => {
       ...(term && {
         OR: [
           { listing: { title: contains } },
-          side === "buyer" ? { seller: { name: contains } } : { buyer: { name: contains } },
+          side === "buyer"
+            ? { seller: { name: contains } }
+            : { buyer: { name: contains } },
         ],
       }),
     };
@@ -596,13 +733,18 @@ const getMyConversations = async (userId: string, query: IQuery) => {
   ]);
 
   return {
-    data: conversations.map((conversation) => toConversationSummary(conversation, userId)),
+    data: conversations.map((conversation) =>
+      toConversationSummary(conversation, userId),
+    ),
     meta: queryBuilder.buildMeta(page, limit, total),
   };
 };
 
 const getConversationById = async (userId: string, conversationId: string) => {
-  const { conversation, side } = await findConversationForUser(userId, conversationId);
+  const { conversation, side } = await findConversationForUser(
+    userId,
+    conversationId,
+  );
   const { block, result } = await getReplyState(conversation, side);
 
   return {
@@ -615,7 +757,11 @@ const getConversationById = async (userId: string, conversationId: string) => {
   };
 };
 
-const getMessages = async (userId: string, conversationId: string, query: IMessagesQuery) => {
+const getMessages = async (
+  userId: string,
+  conversationId: string,
+  query: IMessagesQuery,
+) => {
   await findConversationForUser(userId, conversationId);
 
   const limit = query.limit ?? 30;
@@ -633,7 +779,10 @@ const getMessages = async (userId: string, conversationId: string, query: IMessa
     }
 
     cursorWhere = {
-      OR: [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { lt: cursor.id } }],
+      OR: [
+        { createdAt: { lt: cursor.createdAt } },
+        { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+      ],
     };
   }
 
@@ -663,12 +812,17 @@ const getMessages = async (userId: string, conversationId: string, query: IMessa
 // ============================================
 
 const markAsRead = async (userId: string, conversationId: string) => {
-  const { conversation, side } = await findConversationForUser(userId, conversationId);
+  const { conversation, side } = await findConversationForUser(
+    userId,
+    conversationId,
+  );
   const mine = sideFields(side);
   const lastReadAt = conversation[mine.lastRead];
 
   const alreadyRead =
-    conversation[mine.unread] === 0 && lastReadAt && lastReadAt.getTime() >= conversation.lastMessageAt.getTime();
+    conversation[mine.unread] === 0 &&
+    lastReadAt &&
+    lastReadAt.getTime() >= conversation.lastMessageAt.getTime();
 
   if (alreadyRead) {
     return { conversationId, readAt: lastReadAt, unreadCount: 0 };
@@ -692,7 +846,11 @@ const markAsRead = async (userId: string, conversationId: string) => {
   return { conversationId, readAt, unreadCount: 0 };
 };
 
-const setArchived = async (userId: string, conversationId: string, payload: IArchiveConversationPayload) => {
+const setArchived = async (
+  userId: string,
+  conversationId: string,
+  payload: IArchiveConversationPayload,
+) => {
   const { side } = await findConversationForUser(userId, conversationId);
 
   const updated = await prisma.conversation.update({
@@ -725,18 +883,31 @@ const postListingSystemMessage = async (listingId: string, body: string) => {
 
     const [message, conversation] = await prisma.$transaction([
       prisma.message.create({
-        data: { conversationId: id, senderId: null, type: MessageType.SYSTEM, body, createdAt: at },
+        data: {
+          conversationId: id,
+          senderId: null,
+          type: MessageType.SYSTEM,
+          body,
+          createdAt: at,
+        },
         select: messageSelect,
       }),
       prisma.conversation.update({
         where: { id },
-        data: { lastMessageAt: at, lastMessagePreview: buildPreview(MessageType.SYSTEM, body), lastMessageSenderId: null },
+        data: {
+          lastMessageAt: at,
+          lastMessagePreview: buildPreview(MessageType.SYSTEM, body),
+          lastMessageSenderId: null,
+        },
         include: conversationInclude,
       }),
     ]);
 
     for (const userId of [conversation.buyerId, conversation.sellerId]) {
-      emitToUser(userId, "message:new", { conversation: toConversationSummary(conversation, userId), message });
+      emitToUser(userId, "message:new", {
+        conversation: toConversationSummary(conversation, userId),
+        message,
+      });
     }
   }
 

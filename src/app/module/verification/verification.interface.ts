@@ -1,4 +1,7 @@
-import { DocumentKind, VerificationType } from "../../../generated/prisma/enums";
+import {
+  DocumentKind,
+  VerificationType,
+} from "../../../generated/prisma/enums";
 
 export interface ISubmitIdVerificationPayload {
   type: "ID";
@@ -18,7 +21,9 @@ export interface ISubmitDealerVerificationPayload {
   documentKinds: DocumentKind[];
 }
 
-export type TSubmitVerificationPayload = ISubmitIdVerificationPayload | ISubmitDealerVerificationPayload;
+export type TSubmitVerificationPayload =
+  | ISubmitIdVerificationPayload
+  | ISubmitDealerVerificationPayload;
 
 export interface IReviewVerificationPayload {
   status: "APPROVED" | "REJECTED";

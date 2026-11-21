@@ -9,7 +9,11 @@ import { queryBuilder } from "../../helper/queryBuilder";
 import { IQuery } from "../../interfaces";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../utils/AppError";
-import { buildAuditDiff, createAuditLog, TAuditActor } from "../../utils/auditLogger";
+import {
+  buildAuditDiff,
+  createAuditLog,
+  TAuditActor,
+} from "../../utils/auditLogger";
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
@@ -29,7 +33,9 @@ const brandInclude = {
   },
 } satisfies Prisma.BrandInclude;
 
-type TBrandWithRelations = Prisma.BrandGetPayload<{ include: typeof brandInclude }>;
+type TBrandWithRelations = Prisma.BrandGetPayload<{
+  include: typeof brandInclude;
+}>;
 
 /*
  * Flattens the join table: vehicleTypes: [{ vehicleType }] → vehicleTypes: [vehicleType]
@@ -43,7 +49,10 @@ const uploadLogo = async (logo: Express.Multer.File | null) => {
   if (!logo) return null;
 
   if (!logo.mimetype.startsWith("image/")) {
-    throw new AppError(httpStatus.UNSUPPORTED_MEDIA_TYPE, "Logo must be an image file");
+    throw new AppError(
+      httpStatus.UNSUPPORTED_MEDIA_TYPE,
+      "Logo must be an image file",
+    );
   }
 
   return uploadToCloudinary(logo, {
@@ -57,7 +66,10 @@ const assertVehicleTypesExist = async (vehicleTypeIds: string[]) => {
   });
 
   if (count !== vehicleTypeIds.length) {
-    throw new AppError(httpStatus.NOT_FOUND, "One or more vehicle types were not found");
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "One or more vehicle types were not found",
+    );
   }
 };
 
@@ -71,7 +83,9 @@ const assertNameAndSlugAvailable = async (
   const existing = await prisma.brand.findFirst({
     where: {
       OR: [
-        ...(name ? [{ name: { equals: name, mode: "insensitive" as const } }] : []),
+        ...(name
+          ? [{ name: { equals: name, mode: "insensitive" as const } }]
+          : []),
         ...(slug ? [{ slug }] : []),
       ],
       ...(excludeId && { NOT: { id: excludeId } }),
@@ -124,7 +138,12 @@ const createBrand = async (
     action: AuditAction.CREATE,
     entity: "Brand",
     entityId: brand.id,
-    newData: { name: brand.name, slug: brand.slug, isActive: brand.isActive, vehicleTypeIds },
+    newData: {
+      name: brand.name,
+      slug: brand.slug,
+      isActive: brand.isActive,
+      vehicleTypeIds,
+    },
   });
 
   return formatBrand(brand);
@@ -247,7 +266,12 @@ const updateBrand = async (
   const logoResult = await uploadLogo(logo);
 
   const previousVehicleTypeIds = vehicleTypeIds
-    ? (await prisma.brandVehicleType.findMany({ where: { brandId: id }, select: { vehicleTypeId: true } }))
+    ? (
+        await prisma.brandVehicleType.findMany({
+          where: { brandId: id },
+          select: { vehicleTypeId: true },
+        })
+      )
         .map((link) => link.vehicleTypeId)
         .sort()
     : undefined;
@@ -256,7 +280,10 @@ const updateBrand = async (
     if (vehicleTypeIds) {
       await tx.brandVehicleType.deleteMany({ where: { brandId: id } });
       await tx.brandVehicleType.createMany({
-        data: vehicleTypeIds.map((vehicleTypeId) => ({ brandId: id, vehicleTypeId })),
+        data: vehicleTypeIds.map((vehicleTypeId) => ({
+          brandId: id,
+          vehicleTypeId,
+        })),
       });
     }
 
@@ -279,8 +306,16 @@ const updateBrand = async (
   }
 
   const diff = buildAuditDiff(
-    { ...existingBrand, vehicleTypeIds: previousVehicleTypeIds, logoUrl: existingBrand.logoUrl },
-    { ...brandData, vehicleTypeIds: vehicleTypeIds && [...vehicleTypeIds].sort(), logoUrl: logoResult?.secure_url },
+    {
+      ...existingBrand,
+      vehicleTypeIds: previousVehicleTypeIds,
+      logoUrl: existingBrand.logoUrl,
+    },
+    {
+      ...brandData,
+      vehicleTypeIds: vehicleTypeIds && [...vehicleTypeIds].sort(),
+      logoUrl: logoResult?.secure_url,
+    },
   );
 
   if (diff.changed) {

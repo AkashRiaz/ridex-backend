@@ -24,8 +24,15 @@ import {
   uploadToCloudinary,
 } from "../../utils/uploadToCloudinary";
 import { IRequestMeta } from "../auth/auth.interface";
-import { IReviewVerificationPayload, TSubmitVerificationPayload } from "./verification.interface";
-import { DOCUMENT_PURGE_AFTER_DAYS, getDocumentProblems, maskNid } from "./verification.utils";
+import {
+  IReviewVerificationPayload,
+  TSubmitVerificationPayload,
+} from "./verification.interface";
+import {
+  DOCUMENT_PURGE_AFTER_DAYS,
+  getDocumentProblems,
+  maskNid,
+} from "./verification.utils";
 
 const SIGNED_URL_SECONDS = 10 * 60;
 
@@ -67,13 +74,18 @@ const getMyVerification = async (userId: string) => {
     }),
   ]);
 
-  const latest = (type: VerificationType) => requests.find((request) => request.type === type) ?? null;
+  const latest = (type: VerificationType) =>
+    requests.find((request) => request.type === type) ?? null;
 
   return {
     badges: {
       phone: { verified: user.phoneVerified, phone: user.phone },
       email: { verified: user.emailVerified },
-      id: { verified: Boolean(user.idVerifiedAt), verifiedAt: user.idVerifiedAt, latestRequest: latest("ID") },
+      id: {
+        verified: Boolean(user.idVerifiedAt),
+        verifiedAt: user.idVerifiedAt,
+        latestRequest: latest("ID"),
+      },
       dealer: {
         applicable: user.role === Role.DEALER,
         verified: Boolean(user.dealerVerifiedAt),
@@ -91,10 +103,15 @@ const submitVerification = async (
   payload: TSubmitVerificationPayload,
   files: Express.Multer.File[],
 ) => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: requestUser.userId } });
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: requestUser.userId },
+  });
 
   if (payload.type === VerificationType.DEALER && user.role !== Role.DEALER) {
-    throw new AppError(httpStatus.FORBIDDEN, "Only dealer accounts can apply for dealer verification");
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Only dealer accounts can apply for dealer verification",
+    );
   }
 
   if (payload.type === VerificationType.ID && user.idVerifiedAt) {
@@ -102,23 +119,43 @@ const submitVerification = async (
   }
 
   if (payload.type === VerificationType.DEALER && user.dealerVerifiedAt) {
-    throw new AppError(httpStatus.CONFLICT, "Your dealership is already verified");
+    throw new AppError(
+      httpStatus.CONFLICT,
+      "Your dealership is already verified",
+    );
   }
 
   const pending = await prisma.verificationRequest.findFirst({
-    where: { userId: user.id, type: payload.type, status: VerificationStatus.PENDING },
+    where: {
+      userId: user.id,
+      type: payload.type,
+      status: VerificationStatus.PENDING,
+    },
     select: { id: true },
   });
 
   if (pending) {
-    throw new AppError(httpStatus.CONFLICT, "You already have a request waiting for review");
+    throw new AppError(
+      httpStatus.CONFLICT,
+      "You already have a request waiting for review",
+    );
   }
 
-  if (payload.type === VerificationType.DEALER && !isValidLocation(payload.division, payload.district)) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Choose a valid division and district for the showroom");
+  if (
+    payload.type === VerificationType.DEALER &&
+    !isValidLocation(payload.division, payload.district)
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Choose a valid division and district for the showroom",
+    );
   }
 
-  const problems = getDocumentProblems(payload.type, payload.documentKinds, files);
+  const problems = getDocumentProblems(
+    payload.type,
+    payload.documentKinds,
+    files,
+  );
 
   if (problems.length > 0) {
     throw new AppError(httpStatus.BAD_REQUEST, problems.join("; "));
@@ -135,16 +172,25 @@ const submitVerification = async (
   );
 
   const uploaded = uploads
-    .filter((result): result is PromiseFulfilledResult<TUploadResult> => result.status === "fulfilled")
+    .filter(
+      (result): result is PromiseFulfilledResult<TUploadResult> =>
+        result.status === "fulfilled",
+    )
     .map((result) => result.value);
 
   if (uploaded.length !== files.length) {
     await Promise.all(
       uploaded.map((item) =>
-        deleteFromCloudinary(item.public_id, { type: "private", resourceType: item.resource_type }),
+        deleteFromCloudinary(item.public_id, {
+          type: "private",
+          resourceType: item.resource_type,
+        }),
       ),
     );
-    throw new AppError(httpStatus.BAD_GATEWAY, "Document upload failed. Please try again.");
+    throw new AppError(
+      httpStatus.BAD_GATEWAY,
+      "Document upload failed. Please try again.",
+    );
   }
 
   const details =
@@ -176,7 +222,11 @@ const submitVerification = async (
     select: requestListSelect,
   });
 
-  appEvents.emit("verification.submitted", { requestId: request.id, userId: user.id, type: request.type });
+  appEvents.emit("verification.submitted", {
+    requestId: request.id,
+    userId: user.id,
+    type: request.type,
+  });
 
   return request;
 };
@@ -190,7 +240,10 @@ const getVerificationRequests = async (query: IQuery) => {
 
   const andConditions: VerificationRequestWhereInput[] = [];
 
-  if (query.status && Object.values(VerificationStatus).includes(query.status)) {
+  if (
+    query.status &&
+    Object.values(VerificationStatus).includes(query.status)
+  ) {
     andConditions.push({ status: query.status });
   } else if (query.status !== "ALL") {
     andConditions.push({ status: VerificationStatus.PENDING });
@@ -223,19 +276,32 @@ const getVerificationRequests = async (query: IQuery) => {
       select: {
         ...requestListSelect,
         user: {
-          select: { id: true, name: true, email: true, phone: true, role: true, status: true, imageUrl: true },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            role: true,
+            status: true,
+            imageUrl: true,
+          },
         },
       },
     }),
     prisma.verificationRequest.count({ where }),
-    prisma.verificationRequest.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.verificationRequest.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+    }),
   ]);
 
   return {
     data: requests,
     meta: {
       ...queryBuilder.buildMeta(page, limit, total),
-      statusCounts: Object.fromEntries(statusCounts.map((item) => [item.status, item._count._all])),
+      statusCounts: Object.fromEntries(
+        statusCounts.map((item) => [item.status, item._count._all]),
+      ),
     },
   };
 };
@@ -274,14 +340,21 @@ const getVerificationRequestById = async (id: string) => {
 
   return {
     ...request,
-    documents: request.documents.map(({ publicId, resourceType, format, ...document }) => ({
-      ...document,
-      format,
-      // purged documents have no file any more
-      url: request.documentsPurgedAt
-        ? null
-        : getPrivateDownloadUrl(publicId, format, resourceType, SIGNED_URL_SECONDS),
-    })),
+    documents: request.documents.map(
+      ({ publicId, resourceType, format, ...document }) => ({
+        ...document,
+        format,
+        // purged documents have no file any more
+        url: request.documentsPurgedAt
+          ? null
+          : getPrivateDownloadUrl(
+              publicId,
+              format,
+              resourceType,
+              SIGNED_URL_SECONDS,
+            ),
+      }),
+    ),
     documentUrlsExpireAt: request.documentsPurgedAt ? null : expiresAt,
   };
 };
@@ -302,11 +375,17 @@ const reviewVerificationRequest = async (
   }
 
   if (request.status !== VerificationStatus.PENDING) {
-    throw new AppError(httpStatus.CONFLICT, "This request has already been reviewed");
+    throw new AppError(
+      httpStatus.CONFLICT,
+      "This request has already been reviewed",
+    );
   }
 
   if (request.userId === staff.userId) {
-    throw new AppError(httpStatus.FORBIDDEN, "You cannot review your own verification");
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You cannot review your own verification",
+    );
   }
 
   const isApprove = payload.status === VerificationStatus.APPROVED;
@@ -332,7 +411,9 @@ const reviewVerificationRequest = async (
             : {
                 dealerVerifiedAt: now,
                 // a verified dealer can start posting listings
-                ...(request.user.status === UserStatus.PENDING && { status: UserStatus.ACTIVE }),
+                ...(request.user.status === UserStatus.PENDING && {
+                  status: UserStatus.ACTIVE,
+                }),
               },
       });
     }
@@ -343,7 +424,11 @@ const reviewVerificationRequest = async (
         action: isApprove ? AuditAction.APPROVE : AuditAction.REJECT,
         entity: "VerificationRequest",
         entityId: id,
-        newData: { type: request.type, status: payload.status, reason: payload.reason ?? null },
+        newData: {
+          type: request.type,
+          status: payload.status,
+          reason: payload.reason ?? null,
+        },
         ...meta,
       },
       tx,
@@ -352,7 +437,11 @@ const reviewVerificationRequest = async (
 
   // Side effects AFTER commit
   if (isApprove) {
-    appEvents.emit("verification.approved", { requestId: id, userId: request.userId, type: request.type });
+    appEvents.emit("verification.approved", {
+      requestId: id,
+      userId: request.userId,
+      type: request.type,
+    });
   } else {
     appEvents.emit("verification.rejected", {
       requestId: id,
@@ -374,11 +463,15 @@ const reviewVerificationRequest = async (
  * The request (type, decision, masked details) is kept as a record.
  */
 const purgeReviewedDocuments = async () => {
-  const cutoff = new Date(Date.now() - DOCUMENT_PURGE_AFTER_DAYS * 24 * 60 * 60 * 1000);
+  const cutoff = new Date(
+    Date.now() - DOCUMENT_PURGE_AFTER_DAYS * 24 * 60 * 60 * 1000,
+  );
 
   const requests = await prisma.verificationRequest.findMany({
     where: {
-      status: { in: [VerificationStatus.APPROVED, VerificationStatus.REJECTED] },
+      status: {
+        in: [VerificationStatus.APPROVED, VerificationStatus.REJECTED],
+      },
       reviewedAt: { lt: cutoff },
       documentsPurgedAt: null,
     },
@@ -389,7 +482,10 @@ const purgeReviewedDocuments = async () => {
   for (const request of requests) {
     await Promise.all(
       request.documents.map((document) =>
-        deleteFromCloudinary(document.publicId, { type: "private", resourceType: document.resourceType }),
+        deleteFromCloudinary(document.publicId, {
+          type: "private",
+          resourceType: document.resourceType,
+        }),
       ),
     );
 

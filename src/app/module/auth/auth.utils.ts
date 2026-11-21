@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { CookieOptions, Request, Response } from "express";
 import httpStatus from "http-status";
 import jwt, { SignOptions } from "jsonwebtoken";
@@ -281,7 +281,9 @@ export const getRequestMeta = (req: Request): IRequestMeta => ({
  * The Next frontend forwards the refresh token as a cookie;
  * other clients (mobile) may send it in the body.
  */
-export const getRefreshTokenFromRequest = (req: Request): string | undefined => {
+export const getRefreshTokenFromRequest = (
+  req: Request,
+): string | undefined => {
   const cookieToken = req.cookies?.refreshToken;
 
   if (typeof cookieToken === "string" && cookieToken.trim()) {

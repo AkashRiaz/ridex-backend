@@ -1,3 +1,7 @@
+import type { toListingCard } from "../listing/listing.service";
+
+export type TListingCard = ReturnType<typeof toListingCard>;
+
 export const SEARCH_SORT_OPTIONS = [
   "relevance",
   "newest",
@@ -38,4 +42,55 @@ export interface ISearchListingsInput {
   sortBy: TSearchSort;
   limit: number;
   skip: number;
+}
+
+// ============================================
+// Homepage
+// ============================================
+
+export interface IFeaturedCandidate {
+  id: string;
+  views: number;
+  saves: number; // in the activity window
+  chats: number; // in the activity window
+  verifiedSeller: boolean;
+  hasPhoto: boolean;
+  publishedAt: Date; // approvedAt, falling back to createdAt
+}
+
+export interface ICategoryCount {
+  value: string;
+  label: string;
+  count: number;
+}
+
+export interface IHomeData {
+  featured: TListingCard[];
+  categories: {
+    vehicleType: string | null; // slug used for the search link
+    attribute: string | null; // spec key used for the search link
+    items: ICategoryCount[];
+  };
+  brands: {
+    id: string;
+    name: string;
+    slug: string;
+    logoUrl: string | null;
+    isPopular: boolean;
+    count: number;
+  }[];
+  vehicleTypes: {
+    id: string;
+    name: string;
+    slug: string;
+    icon: string | null;
+    count: number;
+  }[];
+  stats: {
+    liveListings: number;
+    verifiedSellers: number;
+    districts: number;
+    soldLast30Days: number;
+  };
+  generatedAt: string;
 }

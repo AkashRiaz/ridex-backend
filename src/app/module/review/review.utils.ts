@@ -5,10 +5,18 @@ import { TReviewEligibility } from "./review.interface";
 
 export const REVIEW_EDIT_WINDOW_DAYS = 30;
 
-export const REVIEWABLE_STATUSES: ListingStatus[] = [ListingStatus.APPROVED, ListingStatus.SOLD];
+export const REVIEWABLE_STATUSES: ListingStatus[] = [
+  ListingStatus.APPROVED,
+  ListingStatus.SOLD,
+];
 
 type TReviewer = { id: string; emailVerified: boolean; phoneVerified: boolean };
-type TReviewListing = { id: string; sellerId: string; status: ListingStatus; isDeleted: boolean };
+type TReviewListing = {
+  id: string;
+  sellerId: string;
+  status: ListingStatus;
+  isDeleted: boolean;
+};
 
 /*
  * Pure part of the eligibility check (unit-tested).
@@ -23,11 +31,19 @@ export const evaluateReviewEligibility = (input: {
   const { reviewer, listing } = input;
 
   if (listing.sellerId === reviewer.id) {
-    return { allowed: false, code: "OWN_LISTING", reason: "You cannot review your own listing" };
+    return {
+      allowed: false,
+      code: "OWN_LISTING",
+      reason: "You cannot review your own listing",
+    };
   }
 
   if (listing.isDeleted || !REVIEWABLE_STATUSES.includes(listing.status)) {
-    return { allowed: false, code: "LISTING_UNAVAILABLE", reason: "This listing cannot be reviewed" };
+    return {
+      allowed: false,
+      code: "LISTING_UNAVAILABLE",
+      reason: "This listing cannot be reviewed",
+    };
   }
 
   if (!reviewer.emailVerified && !reviewer.phoneVerified) {
@@ -42,7 +58,8 @@ export const evaluateReviewEligibility = (input: {
     return {
       allowed: false,
       code: "ALREADY_REVIEWED",
-      reason: "You have already reviewed this listing. You can edit your review instead.",
+      reason:
+        "You have already reviewed this listing. You can edit your review instead.",
     };
   }
 
@@ -50,7 +67,8 @@ export const evaluateReviewEligibility = (input: {
     return {
       allowed: false,
       code: "NO_INTERACTION",
-      reason: "You can review a seller after you have viewed, saved or asked about their listing",
+      reason:
+        "You can review a seller after you have viewed, saved or asked about their listing",
     };
   }
 
@@ -61,7 +79,10 @@ export const evaluateReviewEligibility = (input: {
  * "Interaction" with the seller about this listing: the reviewer viewed it,
  * saved it, or has a conversation with the seller about it.
  */
-export const hasReviewInteraction = async (reviewerId: string, listingId: string) => {
+export const hasReviewInteraction = async (
+  reviewerId: string,
+  listingId: string,
+) => {
   const [viewed, saved, conversation] = await Promise.all([
     prisma.recentlyViewed.findUnique({
       where: { userId_listingId: { userId: reviewerId, listingId } },
@@ -80,11 +101,19 @@ export const hasReviewInteraction = async (reviewerId: string, listingId: string
   return Boolean(viewed || saved || conversation);
 };
 
-export const canReview = async (reviewer: TReviewer, listing: TReviewListing) => {
+export const canReview = async (
+  reviewer: TReviewer,
+  listing: TReviewListing,
+) => {
   const [hasInteraction, existing] = await Promise.all([
     hasReviewInteraction(reviewer.id, listing.id),
     prisma.review.findUnique({
-      where: { reviewerId_listingId: { reviewerId: reviewer.id, listingId: listing.id } },
+      where: {
+        reviewerId_listingId: {
+          reviewerId: reviewer.id,
+          listingId: listing.id,
+        },
+      },
       select: { id: true },
     }),
   ]);
@@ -101,7 +130,10 @@ export const canReview = async (reviewer: TReviewer, listing: TReviewListing) =>
  * Keeps User.ratingAverage / ratingCount in sync. Hidden reviews do not count.
  * Always call inside the same transaction as the review change.
  */
-export const recalculateSellerRating = async (tx: Prisma.TransactionClient, sellerId: string) => {
+export const recalculateSellerRating = async (
+  tx: Prisma.TransactionClient,
+  sellerId: string,
+) => {
   const aggregate = await tx.review.aggregate({
     where: { sellerId, isHidden: false },
     _avg: { rating: true },
@@ -118,4 +150,5 @@ export const recalculateSellerRating = async (tx: Prisma.TransactionClient, sell
 };
 
 export const isWithinEditWindow = (createdAt: Date, now = new Date()) =>
-  now.getTime() - createdAt.getTime() <= REVIEW_EDIT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  now.getTime() - createdAt.getTime() <=
+  REVIEW_EDIT_WINDOW_DAYS * 24 * 60 * 60 * 1000;

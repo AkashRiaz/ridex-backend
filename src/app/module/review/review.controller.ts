@@ -21,7 +21,10 @@ const getReviewEligibility = catchAsync(async (req: Request, res: Response) => {
 });
 
 const createReview = catchAsync(async (req: Request, res: Response) => {
-  const result = await ReviewService.createReview(req.user as RequestUser, req.body);
+  const result = await ReviewService.createReview(
+    req.user as RequestUser,
+    req.body,
+  );
 
   sendResponse(res, {
     success: true,
@@ -87,7 +90,11 @@ const updateReview = catchAsync(async (req: Request, res: Response) => {
 });
 
 const deleteReview = catchAsync(async (req: Request, res: Response) => {
-  await ReviewService.deleteReview(req.user as RequestUser, req.params.id as string, getRequestMeta(req));
+  await ReviewService.deleteReview(
+    req.user as RequestUser,
+    req.params.id as string,
+    getRequestMeta(req),
+  );
 
   sendResponse(res, {
     success: true,

@@ -24,9 +24,17 @@ router.post(
   VerificationController.submitVerification,
 );
 
-router.get("/", auth(...REVIEWER_ROLES), VerificationController.getVerificationRequests);
+router.get(
+  "/",
+  auth(...REVIEWER_ROLES),
+  VerificationController.getVerificationRequests,
+);
 
-router.get("/:id", auth(...REVIEWER_ROLES), VerificationController.getVerificationRequestById);
+router.get(
+  "/:id",
+  auth(...REVIEWER_ROLES),
+  VerificationController.getVerificationRequestById,
+);
 
 router.patch(
   "/:id",

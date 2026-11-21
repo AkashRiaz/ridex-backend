@@ -10,7 +10,11 @@ import { queryBuilder } from "../../helper/queryBuilder";
 import { IQuery } from "../../interfaces";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../utils/AppError";
-import { buildAuditDiff, createAuditLog, TAuditActor } from "../../utils/auditLogger";
+import {
+  buildAuditDiff,
+  createAuditLog,
+  TAuditActor,
+} from "../../utils/auditLogger";
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
@@ -38,7 +42,10 @@ const uploadImage = async (image: Express.Multer.File | null) => {
   if (!image) return null;
 
   if (!image.mimetype.startsWith("image/")) {
-    throw new AppError(httpStatus.UNSUPPORTED_MEDIA_TYPE, "Image must be an image file");
+    throw new AppError(
+      httpStatus.UNSUPPORTED_MEDIA_TYPE,
+      "Image must be an image file",
+    );
   }
 
   return uploadToCloudinary(image, {
@@ -116,7 +123,10 @@ const createVehicleModel = async (
   image: Express.Multer.File | null,
   actor: TAuditActor,
 ) => {
-  const attributes = await assertBrandAndType(payload.brandId, payload.vehicleTypeId);
+  const attributes = await assertBrandAndType(
+    payload.brandId,
+    payload.vehicleTypeId,
+  );
 
   const defaultSpecs = assertSpecsValid(attributes, payload.defaultSpecs);
 
@@ -127,7 +137,9 @@ const createVehicleModel = async (
     (await generateUniqueSlug(payload.name, async (candidate) =>
       Boolean(
         await prisma.vehicleModel.findUnique({
-          where: { brandId_slug: { brandId: payload.brandId, slug: candidate } },
+          where: {
+            brandId_slug: { brandId: payload.brandId, slug: candidate },
+          },
         }),
       ),
     ));
@@ -295,7 +307,8 @@ const updateVehicleModel = async (
    */
   const specsToValidate = payload.defaultSpecs ?? existingModel.defaultSpecs;
   const defaultSpecs =
-    payload.defaultSpecs !== undefined || vehicleTypeId !== existingModel.vehicleTypeId
+    payload.defaultSpecs !== undefined ||
+    vehicleTypeId !== existingModel.vehicleTypeId
       ? assertSpecsValid(attributes, specsToValidate)
       : undefined;
 
@@ -309,15 +322,23 @@ const updateVehicleModel = async (
     });
 
     if (slugTaken) {
-      throw new AppError(httpStatus.CONFLICT, "This brand already has a model with this slug");
+      throw new AppError(
+        httpStatus.CONFLICT,
+        "This brand already has a model with this slug",
+      );
     }
   }
 
-  const yearFrom = payload.yearFrom === undefined ? existingModel.yearFrom : payload.yearFrom;
-  const yearTo = payload.yearTo === undefined ? existingModel.yearTo : payload.yearTo;
+  const yearFrom =
+    payload.yearFrom === undefined ? existingModel.yearFrom : payload.yearFrom;
+  const yearTo =
+    payload.yearTo === undefined ? existingModel.yearTo : payload.yearTo;
 
   if (yearFrom && yearTo && yearFrom > yearTo) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Year from must be before year to");
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Year from must be before year to",
+    );
   }
 
   const imageResult = await uploadImage(image);
@@ -328,7 +349,9 @@ const updateVehicleModel = async (
     where: { id },
     data: {
       ...rest,
-      ...(defaultSpecs && { defaultSpecs: defaultSpecs as Prisma.InputJsonValue }),
+      ...(defaultSpecs && {
+        defaultSpecs: defaultSpecs as Prisma.InputJsonValue,
+      }),
       ...(imageResult && {
         imageUrl: imageResult.secure_url,
         imagePublicId: imageResult.public_id,
@@ -369,7 +392,9 @@ const deleteVehicleModel = async (id: string, actor: TAuditActor) => {
     throw new AppError(httpStatus.NOT_FOUND, "Vehicle model not found");
   }
 
-  const listingCount = await prisma.listing.count({ where: { vehicleModelId: id } });
+  const listingCount = await prisma.listing.count({
+    where: { vehicleModelId: id },
+  });
 
   if (listingCount > 0) {
     throw new AppError(
@@ -387,7 +412,11 @@ const deleteVehicleModel = async (id: string, actor: TAuditActor) => {
     action: AuditAction.DELETE,
     entity: "VehicleModel",
     entityId: id,
-    oldData: { name: vehicleModel.name, slug: vehicleModel.slug, brandId: vehicleModel.brandId },
+    oldData: {
+      name: vehicleModel.name,
+      slug: vehicleModel.slug,
+      brandId: vehicleModel.brandId,
+    },
   });
 
   return deletedModel;

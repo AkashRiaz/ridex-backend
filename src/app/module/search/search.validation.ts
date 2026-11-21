@@ -36,7 +36,11 @@ export const SearchListingsQueryZodSchema = z
     maxYear: optionalNumber("Max year", 1900),
     maxMileage: optionalNumber("Max mileage"),
     condition: commaList.refine(
-      (values) => !values || values.every((value) => ["NEW", "USED", "RECONDITIONED"].includes(value)),
+      (values) =>
+        !values ||
+        values.every((value) =>
+          ["NEW", "USED", "RECONDITIONED"].includes(value),
+        ),
       "Condition must be NEW, USED or RECONDITIONED",
     ),
     negotiable: z.enum(["true", "false"]).optional(),
@@ -44,10 +48,21 @@ export const SearchListingsQueryZodSchema = z
     district: z.string().trim().max(40).optional(),
     lat: z.coerce.number().min(-90).max(90).optional(),
     lng: z.coerce.number().min(-180).max(180).optional(),
-    radius: z.coerce.number().min(1, "Radius must be at least 1 km").max(500, "Radius can be at most 500 km").optional(),
-    sortBy: z.enum(SEARCH_SORT_OPTIONS, { message: "Invalid sort option" }).optional(),
+    radius: z.coerce
+      .number()
+      .min(1, "Radius must be at least 1 km")
+      .max(500, "Radius can be at most 500 km")
+      .optional(),
+    sortBy: z
+      .enum(SEARCH_SORT_OPTIONS, { message: "Invalid sort option" })
+      .optional(),
     page: z.coerce.number().int().min(1).optional(),
-    limit: z.coerce.number().int().min(1).max(48, "Limit can be at most 48").optional(),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(48, "Limit can be at most 48")
+      .optional(),
   })
   .refine((query) => (query.lat === undefined) === (query.lng === undefined), {
     message: "lat and lng must be sent together",
@@ -55,11 +70,16 @@ export const SearchListingsQueryZodSchema = z
   })
   .refine(
     (query) =>
-      query.minPrice === undefined || query.maxPrice === undefined || query.minPrice <= query.maxPrice,
+      query.minPrice === undefined ||
+      query.maxPrice === undefined ||
+      query.minPrice <= query.maxPrice,
     { message: "Min price must be less than max price", path: ["minPrice"] },
   )
   .refine(
-    (query) => query.minYear === undefined || query.maxYear === undefined || query.minYear <= query.maxYear,
+    (query) =>
+      query.minYear === undefined ||
+      query.maxYear === undefined ||
+      query.minYear <= query.maxYear,
     { message: "Min year must be before max year", path: ["minYear"] },
   );
 

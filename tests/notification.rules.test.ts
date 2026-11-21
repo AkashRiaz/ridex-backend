@@ -1,7 +1,16 @@
 import jwt from "jsonwebtoken";
 import { describe, expect, it } from "vitest";
-import { NotificationCategory, NotificationType, ReportTargetType, Role } from "../src/generated/prisma/enums";
-import { MESSAGE_CONTEXT_SIZE, assertActionAllowed, targetColumns } from "../src/app/module/report/report.utils";
+import {
+  NotificationCategory,
+  NotificationType,
+  ReportTargetType,
+  Role,
+} from "../src/generated/prisma/enums";
+import {
+  MESSAGE_CONTEXT_SIZE,
+  assertActionAllowed,
+  targetColumns,
+} from "../src/app/module/report/report.utils";
 import {
   CATEGORY_DEFAULTS,
   TYPE_CATEGORY,
@@ -24,15 +33,29 @@ describe("notification preferences", () => {
     const resolved = resolvePreferences([]);
 
     expect(resolved).toHaveLength(Object.keys(CATEGORY_DEFAULTS).length);
-    expect(resolved.every((preference) => preference.inApp && preference.email)).toBe(true);
+    expect(
+      resolved.every((preference) => preference.inApp && preference.email),
+    ).toBe(true);
   });
 
   it("applies stored rows", () => {
-    const rows = [{ category: NotificationCategory.PRICE_ALERTS, inApp: false, email: false }];
+    const rows = [
+      {
+        category: NotificationCategory.PRICE_ALERTS,
+        inApp: false,
+        email: false,
+      },
+    ];
 
-    expect(isChannelEnabled(rows, NotificationCategory.PRICE_ALERTS, "inApp")).toBe(false);
-    expect(isChannelEnabled(rows, NotificationCategory.PRICE_ALERTS, "email")).toBe(false);
-    expect(isChannelEnabled(rows, NotificationCategory.LISTINGS, "email")).toBe(true);
+    expect(
+      isChannelEnabled(rows, NotificationCategory.PRICE_ALERTS, "inApp"),
+    ).toBe(false);
+    expect(
+      isChannelEnabled(rows, NotificationCategory.PRICE_ALERTS, "email"),
+    ).toBe(false);
+    expect(isChannelEnabled(rows, NotificationCategory.LISTINGS, "email")).toBe(
+      true,
+    );
   });
 
   it("keeps locked channels on even if a row says otherwise", () => {
@@ -41,37 +64,77 @@ describe("notification preferences", () => {
       { category: NotificationCategory.MESSAGES, inApp: false, email: false },
     ];
 
-    expect(isChannelEnabled(rows, NotificationCategory.ACCOUNT, "inApp")).toBe(true);
-    expect(isChannelEnabled(rows, NotificationCategory.ACCOUNT, "email")).toBe(true);
+    expect(isChannelEnabled(rows, NotificationCategory.ACCOUNT, "inApp")).toBe(
+      true,
+    );
+    expect(isChannelEnabled(rows, NotificationCategory.ACCOUNT, "email")).toBe(
+      true,
+    );
     // the chat badge is always on; the message email digest can be turned off
-    expect(isChannelEnabled(rows, NotificationCategory.MESSAGES, "inApp")).toBe(true);
-    expect(isChannelEnabled(rows, NotificationCategory.MESSAGES, "email")).toBe(false);
+    expect(isChannelEnabled(rows, NotificationCategory.MESSAGES, "inApp")).toBe(
+      true,
+    );
+    expect(isChannelEnabled(rows, NotificationCategory.MESSAGES, "email")).toBe(
+      false,
+    );
   });
 
   it("reports an attempt to switch off a locked channel", () => {
-    expect(findLockedChange([{ category: NotificationCategory.ACCOUNT, email: false }])).not.toBeNull();
-    expect(findLockedChange([{ category: NotificationCategory.MESSAGES, inApp: false }])).not.toBeNull();
-    expect(findLockedChange([{ category: NotificationCategory.MESSAGES, email: false }])).toBeNull();
-    expect(findLockedChange([{ category: NotificationCategory.ACCOUNT, email: true }])).toBeNull();
+    expect(
+      findLockedChange([
+        { category: NotificationCategory.ACCOUNT, email: false },
+      ]),
+    ).not.toBeNull();
+    expect(
+      findLockedChange([
+        { category: NotificationCategory.MESSAGES, inApp: false },
+      ]),
+    ).not.toBeNull();
+    expect(
+      findLockedChange([
+        { category: NotificationCategory.MESSAGES, email: false },
+      ]),
+    ).toBeNull();
+    expect(
+      findLockedChange([
+        { category: NotificationCategory.ACCOUNT, email: true },
+      ]),
+    ).toBeNull();
   });
 
   it("maps every notification type to a category", () => {
     for (const type of Object.values(NotificationType)) {
-      expect(Object.values(NotificationCategory)).toContain(TYPE_CATEGORY[type]);
+      expect(Object.values(NotificationCategory)).toContain(
+        TYPE_CATEGORY[type],
+      );
     }
-    expect(TYPE_CATEGORY.VERIFICATION_REJECTED).toBe(NotificationCategory.ACCOUNT);
-    expect(TYPE_CATEGORY.WISHLIST_PRICE_DROP).toBe(NotificationCategory.PRICE_ALERTS);
+    expect(TYPE_CATEGORY.VERIFICATION_REJECTED).toBe(
+      NotificationCategory.ACCOUNT,
+    );
+    expect(TYPE_CATEGORY.WISHLIST_PRICE_DROP).toBe(
+      NotificationCategory.PRICE_ALERTS,
+    );
   });
 
   it("validates preference updates", () => {
     expect(
-      UpdatePreferencesZodSchema.safeParse({ preferences: [{ category: "LISTINGS", email: false }] }).success,
+      UpdatePreferencesZodSchema.safeParse({
+        preferences: [{ category: "LISTINGS", email: false }],
+      }).success,
     ).toBe(true);
-    expect(UpdatePreferencesZodSchema.safeParse({ preferences: [{ category: "LISTINGS" }] }).success).toBe(false);
-    expect(UpdatePreferencesZodSchema.safeParse({ preferences: [{ category: "SPAM", email: true }] }).success).toBe(
-      false,
-    );
-    expect(UpdatePreferencesZodSchema.safeParse({ preferences: [] }).success).toBe(false);
+    expect(
+      UpdatePreferencesZodSchema.safeParse({
+        preferences: [{ category: "LISTINGS" }],
+      }).success,
+    ).toBe(false);
+    expect(
+      UpdatePreferencesZodSchema.safeParse({
+        preferences: [{ category: "SPAM", email: true }],
+      }).success,
+    ).toBe(false);
+    expect(
+      UpdatePreferencesZodSchema.safeParse({ preferences: [] }).success,
+    ).toBe(false);
   });
 });
 
@@ -81,13 +144,22 @@ describe("notification preferences", () => {
 
 describe("unsubscribe links", () => {
   it("round-trips a token", () => {
-    const token = createUnsubscribeToken("user-1", NotificationCategory.REVIEWS);
+    const token = createUnsubscribeToken(
+      "user-1",
+      NotificationCategory.REVIEWS,
+    );
 
-    expect(verifyUnsubscribeToken(token)).toEqual({ userId: "user-1", category: NotificationCategory.REVIEWS });
+    expect(verifyUnsubscribeToken(token)).toEqual({
+      userId: "user-1",
+      category: NotificationCategory.REVIEWS,
+    });
   });
 
   it("rejects tampered tokens and other token kinds", () => {
-    const token = createUnsubscribeToken("user-1", NotificationCategory.REVIEWS);
+    const token = createUnsubscribeToken(
+      "user-1",
+      NotificationCategory.REVIEWS,
+    );
     const socketToken = jwt.sign(
       { userId: "user-1", category: "REVIEWS", typ: "unsubscribe" },
       process.env.JWT_SOCKET_SECRET as string,
@@ -99,8 +171,12 @@ describe("unsubscribe links", () => {
   });
 
   it("has no unsubscribe link for locked emails", () => {
-    expect(buildUnsubscribeUrl("user-1", NotificationCategory.ACCOUNT)).toBeNull();
-    expect(buildUnsubscribeUrl("user-1", NotificationCategory.MESSAGES)).toContain("/unsubscribe?token=");
+    expect(
+      buildUnsubscribeUrl("user-1", NotificationCategory.ACCOUNT),
+    ).toBeNull();
+    expect(
+      buildUnsubscribeUrl("user-1", NotificationCategory.MESSAGES),
+    ).toContain("/unsubscribe?token=");
   });
 });
 
@@ -140,13 +216,29 @@ describe("unread message digest", () => {
 
 describe("message reports", () => {
   it("stores message reports in the message column", () => {
-    expect(targetColumns(ReportTargetType.MESSAGE, "m1")).toEqual({ messageId: "m1" });
+    expect(targetColumns(ReportTargetType.MESSAGE, "m1")).toEqual({
+      messageId: "m1",
+    });
   });
 
   it("lets admins block the sender of a reported message", () => {
-    expect(() => assertActionAllowed("BLOCK_USER", ReportTargetType.MESSAGE, Role.ADMIN)).not.toThrow();
-    expect(() => assertActionAllowed("BLOCK_USER", ReportTargetType.MESSAGE, Role.MODERATOR)).toThrow();
-    expect(() => assertActionAllowed("TAKE_DOWN_LISTING", ReportTargetType.MESSAGE, Role.ADMIN)).toThrow();
+    expect(() =>
+      assertActionAllowed("BLOCK_USER", ReportTargetType.MESSAGE, Role.ADMIN),
+    ).not.toThrow();
+    expect(() =>
+      assertActionAllowed(
+        "BLOCK_USER",
+        ReportTargetType.MESSAGE,
+        Role.MODERATOR,
+      ),
+    ).toThrow();
+    expect(() =>
+      assertActionAllowed(
+        "TAKE_DOWN_LISTING",
+        ReportTargetType.MESSAGE,
+        Role.ADMIN,
+      ),
+    ).toThrow();
   });
 
   it("shows staff a small context window", () => {

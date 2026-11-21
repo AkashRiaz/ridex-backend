@@ -4,7 +4,10 @@ const SlugZodSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase words separated by -")
+  .regex(
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+    "Slug must be lowercase words separated by -",
+  )
   .max(80, "Slug must be at most 80 characters");
 
 const VehicleTypeIdsZodSchema = z

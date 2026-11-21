@@ -20,7 +20,10 @@ const parseListingId = (req: Request) => {
 const addToWishlist = catchAsync(async (req: Request, res: Response) => {
   const { userId } = req.user as RequestUser;
 
-  const result = await WishlistService.addToWishlist(userId, parseListingId(req));
+  const result = await WishlistService.addToWishlist(
+    userId,
+    parseListingId(req),
+  );
 
   sendResponse(res, {
     success: true,
@@ -33,7 +36,10 @@ const addToWishlist = catchAsync(async (req: Request, res: Response) => {
 const removeFromWishlist = catchAsync(async (req: Request, res: Response) => {
   const { userId } = req.user as RequestUser;
 
-  const result = await WishlistService.removeFromWishlist(userId, parseListingId(req));
+  const result = await WishlistService.removeFromWishlist(
+    userId,
+    parseListingId(req),
+  );
 
   sendResponse(res, {
     success: true,

@@ -20,7 +20,10 @@ const parseId = (req: Request) => {
 const getMyNotifications = catchAsync(async (req: Request, res: Response) => {
   const { userId } = req.user as RequestUser;
 
-  const result = await NotificationService.getMyNotifications(userId, req.query);
+  const result = await NotificationService.getMyNotifications(
+    userId,
+    req.query,
+  );
 
   sendResponse(res, {
     success: true,
@@ -73,7 +76,10 @@ const markAllAsRead = catchAsync(async (req: Request, res: Response) => {
 const deleteNotification = catchAsync(async (req: Request, res: Response) => {
   const { userId } = req.user as RequestUser;
 
-  const result = await NotificationService.deleteNotification(userId, parseId(req));
+  const result = await NotificationService.deleteNotification(
+    userId,
+    parseId(req),
+  );
 
   sendResponse(res, {
     success: true,
@@ -99,7 +105,10 @@ const getMyPreferences = catchAsync(async (req: Request, res: Response) => {
 const updateMyPreferences = catchAsync(async (req: Request, res: Response) => {
   const { userId } = req.user as RequestUser;
 
-  const result = await NotificationService.updateMyPreferences(userId, req.body);
+  const result = await NotificationService.updateMyPreferences(
+    userId,
+    req.body,
+  );
 
   sendResponse(res, {
     success: true,

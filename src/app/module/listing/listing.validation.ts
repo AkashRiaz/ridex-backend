@@ -40,7 +40,10 @@ export const UpdateListingZodSchema = z
     title: z
       .string()
       .trim()
-      .max(LISTING_LIMITS.titleMax, `Title must be at most ${LISTING_LIMITS.titleMax} characters`)
+      .max(
+        LISTING_LIMITS.titleMax,
+        `Title must be at most ${LISTING_LIMITS.titleMax} characters`,
+      )
       .optional(),
     description: z
       .string()
@@ -52,19 +55,31 @@ export const UpdateListingZodSchema = z
       .optional(),
     price: z.coerce
       .number({ message: "Price must be a number" })
-      .min(LISTING_LIMITS.priceMin, `Price must be at least ${LISTING_LIMITS.priceMin}`)
+      .min(
+        LISTING_LIMITS.priceMin,
+        `Price must be at least ${LISTING_LIMITS.priceMin}`,
+      )
       .max(LISTING_LIMITS.priceMax, "Price is too high")
       .optional(),
     isNegotiable: z.boolean().optional(),
-    condition: z.enum(["NEW", "USED", "RECONDITIONED"], { message: "Invalid condition" }).optional(),
+    condition: z
+      .enum(["NEW", "USED", "RECONDITIONED"], { message: "Invalid condition" })
+      .optional(),
     mileage: z.coerce
       .number({ message: "Mileage must be a number" })
       .int("Mileage must be a whole number")
       .min(0, "Mileage cannot be negative")
       .max(LISTING_LIMITS.mileageMax, "Mileage is too high")
       .optional(),
-    color: z.string().trim().max(30, "Color must be at most 30 characters").nullable().optional(),
-    specs: z.record(z.string(), z.unknown(), { message: "Specs must be an object" }).optional(),
+    color: z
+      .string()
+      .trim()
+      .max(30, "Color must be at most 30 characters")
+      .nullable()
+      .optional(),
+    specs: z
+      .record(z.string(), z.unknown(), { message: "Specs must be an object" })
+      .optional(),
     videoUrl: z
       .url({ message: "Video link must be a valid URL", protocol: /^https?$/ })
       .max(300)
@@ -72,18 +87,28 @@ export const UpdateListingZodSchema = z
       .optional(),
     division: z.string().trim().max(40).optional(),
     district: z.string().trim().max(40).optional(),
-    area: z.string().trim().max(100, "Area must be at most 100 characters").nullable().optional(),
+    area: z
+      .string()
+      .trim()
+      .max(100, "Area must be at most 100 characters")
+      .nullable()
+      .optional(),
     latitude: z.number().min(-90).max(90).nullable().optional(),
     longitude: z.number().min(-180).max(180).nullable().optional(),
   })
-  .refine((data) => (data.latitude === undefined) === (data.longitude === undefined), {
-    message: "Latitude and longitude must be sent together",
-    path: ["latitude"],
-  });
+  .refine(
+    (data) => (data.latitude === undefined) === (data.longitude === undefined),
+    {
+      message: "Latitude and longitude must be sent together",
+      path: ["latitude"],
+    },
+  );
 
 export const ReorderListingImagesZodSchema = z.object({
   order: z
-    .array(z.uuid("Invalid image ID"), { message: "Order must be a list of image IDs" })
+    .array(z.uuid("Invalid image ID"), {
+      message: "Order must be a list of image IDs",
+    })
     .min(1, "Order cannot be empty"),
   coverImageId: z.uuid("Invalid cover image ID").optional(),
 });
@@ -93,7 +118,11 @@ export const UpdateListingStatusZodSchema = z
     status: z.enum(["APPROVED", "REJECTED"], {
       message: "Status must be APPROVED or REJECTED",
     }),
-    reason: z.string().trim().max(500, "Reason must be at most 500 characters").optional(),
+    reason: z
+      .string()
+      .trim()
+      .max(500, "Reason must be at most 500 characters")
+      .optional(),
   })
   .refine((data) => data.status !== "REJECTED" || Boolean(data.reason), {
     message: "A reason is required when rejecting a listing",

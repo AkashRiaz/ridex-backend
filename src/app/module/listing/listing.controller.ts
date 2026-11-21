@@ -7,7 +7,10 @@ import { getRequestMeta } from "../auth/auth.utils";
 import { ListingService } from "./listing.service";
 
 const createListingDraft = catchAsync(async (req: Request, res: Response) => {
-  const result = await ListingService.createListingDraft(req.user as RequestUser, req.body);
+  const result = await ListingService.createListingDraft(
+    req.user as RequestUser,
+    req.body,
+  );
 
   sendResponse(res, {
     success: true,
@@ -35,7 +38,8 @@ const updateListing = catchAsync(async (req: Request, res: Response) => {
 });
 
 const addListingImages = catchAsync(async (req: Request, res: Response) => {
-  const files = (req.files as { images?: Express.Multer.File[] } | undefined)?.images ?? [];
+  const files =
+    (req.files as { images?: Express.Multer.File[] } | undefined)?.images ?? [];
 
   const result = await ListingService.addListingImages(
     req.user as RequestUser,
@@ -108,7 +112,8 @@ const updateListingStatus = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result.status === "APPROVED" ? "Listing approved" : "Listing rejected",
+    message:
+      result.status === "APPROVED" ? "Listing approved" : "Listing rejected",
     data: result,
   });
 });
@@ -198,7 +203,9 @@ const getListingByIdOrSlug = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getSimilarListings = catchAsync(async (req: Request, res: Response) => {
-  const result = await ListingService.getSimilarListings(req.params.idOrSlug as string);
+  const result = await ListingService.getSimilarListings(
+    req.params.idOrSlug as string,
+  );
 
   sendResponse(res, {
     success: true,

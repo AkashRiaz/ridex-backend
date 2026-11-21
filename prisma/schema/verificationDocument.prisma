@@ -16,6 +16,8 @@ model VerificationDocument {
 
   createdAt DateTime @default(now())
 
+  updatedAt DateTime @updatedAt
+
   request VerificationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
   @@index([requestId])

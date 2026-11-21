@@ -1,4 +1,9 @@
-import { ListingStatus, MessageType, Role, UserStatus } from "../../../generated/prisma/enums";
+import {
+  ListingStatus,
+  MessageType,
+  Role,
+  UserStatus,
+} from "../../../generated/prisma/enums";
 import { IBlockState } from "../userBlock/userBlock.interface";
 
 // ============================================
@@ -6,13 +11,24 @@ import { IBlockState } from "../userBlock/userBlock.interface";
 // ============================================
 
 // marketplace roles that can buy and sell; staff see messages only through reports
-export const CHAT_ROLES: Role[] = [Role.BUYER, Role.SELLER, Role.DEALER, Role.DEALER_STAFF, Role.INSPECTOR];
+export const CHAT_ROLES: Role[] = [
+  Role.BUYER,
+  Role.SELLER,
+  Role.DEALER,
+  Role.DEALER_STAFF,
+  Role.INSPECTOR,
+];
 
 export const MAX_MESSAGE_LENGTH = 2000;
 
 export const MAX_CHAT_IMAGES = 4;
 
-export const CHAT_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+export const CHAT_IMAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+];
 
 export const MESSAGES_DEFAULT_LIMIT = 30;
 
@@ -32,8 +48,10 @@ export const chatRateKeys = {
 export const unreadEmailJobId = (conversationId: string, userId: string) =>
   `unread-messages-${conversationId}-${userId}`;
 
-export const unreadEmailCooldownKey = (conversationId: string, userId: string) =>
-  `chat-email-sent:${conversationId}:${userId}`;
+export const unreadEmailCooldownKey = (
+  conversationId: string,
+  userId: string,
+) => `chat-email-sent:${conversationId}:${userId}`;
 
 // ============================================
 // Sides
@@ -43,16 +61,22 @@ export type TConversationSide = "buyer" | "seller";
 
 type TParticipants = { buyerId: string; sellerId: string };
 
-export const sideOf = (conversation: TParticipants, userId: string): TConversationSide | null => {
+export const sideOf = (
+  conversation: TParticipants,
+  userId: string,
+): TConversationSide | null => {
   if (conversation.buyerId === userId) return "buyer";
   if (conversation.sellerId === userId) return "seller";
   return null;
 };
 
-export const otherSide = (side: TConversationSide): TConversationSide => (side === "buyer" ? "seller" : "buyer");
+export const otherSide = (side: TConversationSide): TConversationSide =>
+  side === "buyer" ? "seller" : "buyer";
 
-export const participantIdOf = (conversation: TParticipants, side: TConversationSide) =>
-  side === "buyer" ? conversation.buyerId : conversation.sellerId;
+export const participantIdOf = (
+  conversation: TParticipants,
+  side: TConversationSide,
+) => (side === "buyer" ? conversation.buyerId : conversation.sellerId);
 
 export const sideFields = (side: TConversationSide) =>
   side === "buyer"
@@ -71,9 +95,15 @@ export const sideFields = (side: TConversationSide) =>
 // Rules (pure, unit-tested)
 // ============================================
 
-type TRuleResult<TCode extends string> = { allowed: true } | { allowed: false; code: TCode; reason: string };
+type TRuleResult<TCode extends string> =
+  | { allowed: true }
+  | { allowed: false; code: TCode; reason: string };
 
-type TListingState = { sellerId: string; status: ListingStatus; isDeleted: boolean };
+type TListingState = {
+  sellerId: string;
+  status: ListingStatus;
+  isDeleted: boolean;
+};
 type TUserState = { status: UserStatus; isDeleted: boolean };
 
 /*
@@ -85,37 +115,71 @@ export const evaluateStartConversation = (input: {
   listing: TListingState | null;
   seller: TUserState | null;
   block: IBlockState;
-}): TRuleResult<"LISTING_NOT_FOUND" | "OWN_LISTING" | "LISTING_UNAVAILABLE" | "SELLER_UNAVAILABLE" | "BLOCKED"> => {
+}): TRuleResult<
+  | "LISTING_NOT_FOUND"
+  | "OWN_LISTING"
+  | "LISTING_UNAVAILABLE"
+  | "SELLER_UNAVAILABLE"
+  | "BLOCKED"
+> => {
   const { listing, seller } = input;
 
   if (!listing || listing.isDeleted) {
-    return { allowed: false, code: "LISTING_NOT_FOUND", reason: "Listing not found" };
+    return {
+      allowed: false,
+      code: "LISTING_NOT_FOUND",
+      reason: "Listing not found",
+    };
   }
 
   if (listing.sellerId === input.userId) {
-    return { allowed: false, code: "OWN_LISTING", reason: "You cannot message yourself about your own listing" };
+    return {
+      allowed: false,
+      code: "OWN_LISTING",
+      reason: "You cannot message yourself about your own listing",
+    };
   }
 
   if (listing.status !== ListingStatus.APPROVED) {
-    return { allowed: false, code: "LISTING_UNAVAILABLE", reason: "This listing is not accepting new messages" };
+    return {
+      allowed: false,
+      code: "LISTING_UNAVAILABLE",
+      reason: "This listing is not accepting new messages",
+    };
   }
 
   if (!seller || seller.isDeleted || seller.status === UserStatus.BLOCKED) {
-    return { allowed: false, code: "SELLER_UNAVAILABLE", reason: "This seller is not available right now" };
+    return {
+      allowed: false,
+      code: "SELLER_UNAVAILABLE",
+      reason: "This seller is not available right now",
+    };
   }
 
   if (input.block.blockedByMe) {
-    return { allowed: false, code: "BLOCKED", reason: "You blocked this seller. Unblock them to send a message." };
+    return {
+      allowed: false,
+      code: "BLOCKED",
+      reason: "You blocked this seller. Unblock them to send a message.",
+    };
   }
 
   if (input.block.blockedMe) {
-    return { allowed: false, code: "BLOCKED", reason: "You cannot message this seller" };
+    return {
+      allowed: false,
+      code: "BLOCKED",
+      reason: "You cannot message this seller",
+    };
   }
 
   return { allowed: true };
 };
 
-export type TReplyCode = "BLOCKED_BY_ME" | "BLOCKED_ME" | "COUNTERPART_UNAVAILABLE" | "LISTING_REMOVED";
+export type TReplyCode =
+  | "BLOCKED_BY_ME"
+  | "BLOCKED_ME"
+  | "COUNTERPART_UNAVAILABLE"
+  | "LISTING_REMOVED";
 
 /*
  * Replying in an EXISTING conversation. Sold, expired and in-review
@@ -127,18 +191,36 @@ export const evaluateReplyState = (input: {
   block: IBlockState;
 }): TRuleResult<TReplyCode> => {
   if (input.block.blockedByMe) {
-    return { allowed: false, code: "BLOCKED_BY_ME", reason: "You blocked this user. Unblock them to reply." };
+    return {
+      allowed: false,
+      code: "BLOCKED_BY_ME",
+      reason: "You blocked this user. Unblock them to reply.",
+    };
   }
 
   if (input.block.blockedMe) {
-    return { allowed: false, code: "BLOCKED_ME", reason: "You can no longer reply to this conversation" };
+    return {
+      allowed: false,
+      code: "BLOCKED_ME",
+      reason: "You can no longer reply to this conversation",
+    };
   }
 
-  if (input.counterpart.isDeleted || input.counterpart.status === UserStatus.BLOCKED) {
-    return { allowed: false, code: "COUNTERPART_UNAVAILABLE", reason: "This account is no longer active" };
+  if (
+    input.counterpart.isDeleted ||
+    input.counterpart.status === UserStatus.BLOCKED
+  ) {
+    return {
+      allowed: false,
+      code: "COUNTERPART_UNAVAILABLE",
+      reason: "This account is no longer active",
+    };
   }
 
-  if (input.listing.isDeleted || input.listing.status === ListingStatus.REJECTED) {
+  if (
+    input.listing.isDeleted ||
+    input.listing.status === ListingStatus.REJECTED
+  ) {
     return {
       allowed: false,
       code: "LISTING_REMOVED",
@@ -153,7 +235,8 @@ export const evaluateReplyState = (input: {
 export const listingNoticeOf = (status: ListingStatus) => {
   if (status === ListingStatus.SOLD) return "This listing has been sold";
   if (status === ListingStatus.EXPIRED) return "This listing has expired";
-  if (status === ListingStatus.PENDING) return "This listing is being reviewed after an edit";
+  if (status === ListingStatus.PENDING)
+    return "This listing is being reviewed after an edit";
   return null;
 };
 
@@ -178,7 +261,9 @@ export const buildPreview = (type: MessageType, body: string) => {
 
   const singleLine = body.replace(/\s+/g, " ").trim();
 
-  return singleLine.length > PREVIEW_LENGTH ? `${singleLine.slice(0, PREVIEW_LENGTH - 1)}…` : singleLine;
+  return singleLine.length > PREVIEW_LENGTH
+    ? `${singleLine.slice(0, PREVIEW_LENGTH - 1)}…`
+    : singleLine;
 };
 
 /*

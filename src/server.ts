@@ -1,4 +1,4 @@
-import { Server, createServer } from "http";
+import { Server, createServer } from "node:http";
 import app from "./app";
 import { config } from "./app/config";
 import { registerEventHandlers } from "./app/events/registerEventHandlers";
@@ -36,7 +36,10 @@ const main = async () => {
         await transporter.verify();
         console.log("SMTP transporter is ready to send emails.");
       } catch (error) {
-        console.warn("SMTP verification failed. Emails will not be sent.", error);
+        console.warn(
+          "SMTP verification failed. Emails will not be sent.",
+          error,
+        );
       }
     } else {
       console.warn("SMTP is not configured. Emails will not be sent.");
@@ -61,7 +64,9 @@ const main = async () => {
     initSocket(server, [registerChatSocketHandlers]);
 
     server.listen(PORT, () => {
-      console.log(`${config.app_name} server (HTTP + Socket.io) is running on port ${PORT}`);
+      console.log(
+        `${config.app_name} server (HTTP + Socket.io) is running on port ${PORT}`,
+      );
     });
   } catch (error) {
     console.error("Error starting the server:", error);

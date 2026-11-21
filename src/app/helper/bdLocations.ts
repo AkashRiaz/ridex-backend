@@ -9,7 +9,11 @@ export type TDistrict = { name: string; lat: number; lng: number };
 
 export type TDivision = { name: string; districts: TDistrict[] };
 
-const d = (name: string, lat: number, lng: number): TDistrict => ({ name, lat, lng });
+const d = (name: string, lat: number, lng: number): TDistrict => ({
+  name,
+  lat,
+  lng,
+});
 
 export const BD_DIVISIONS: TDivision[] = [
   {

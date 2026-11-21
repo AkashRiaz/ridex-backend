@@ -60,9 +60,12 @@ export const CreateUserZodSchema = z.object({
 
   phone: PhoneZodSchema.optional(),
 
-  role: z.enum(["ADMIN", "MODERATOR", "INSPECTOR", "DEALER", "SELLER", "BUYER"], {
-    message: "Invalid role",
-  }),
+  role: z.enum(
+    ["ADMIN", "MODERATOR", "INSPECTOR", "DEALER", "SELLER", "BUYER"],
+    {
+      message: "Invalid role",
+    },
+  ),
 });
 
 export const UpdateUserStatusZodSchema = z
@@ -83,7 +86,10 @@ export const UpdateUserStatusZodSchema = z
   });
 
 export const UpdateUserRoleZodSchema = z.object({
-  role: z.enum(["ADMIN", "MODERATOR", "INSPECTOR", "DEALER", "SELLER", "BUYER"], {
-    message: "Invalid role",
-  }),
+  role: z.enum(
+    ["ADMIN", "MODERATOR", "INSPECTOR", "DEALER", "SELLER", "BUYER"],
+    {
+      message: "Invalid role",
+    },
+  ),
 });

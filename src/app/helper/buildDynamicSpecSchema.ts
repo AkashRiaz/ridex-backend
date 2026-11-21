@@ -30,13 +30,15 @@ const buildFieldSchema = (attribute: IVehicleAttribute): z.ZodType => {
     case "NUMBER":
       return z
         .preprocess(
-          (value) =>
-            typeof value === "string" ? Number(value.trim()) : value,
+          (value) => (typeof value === "string" ? Number(value.trim()) : value),
           z.number({ message: `${label} must be a number` }),
         )
         .superRefine((value, ctx) => {
           if (!Number.isFinite(value)) {
-            ctx.addIssue({ code: "custom", message: `${label} must be a number` });
+            ctx.addIssue({
+              code: "custom",
+              message: `${label} must be a number`,
+            });
             return;
           }
 
@@ -57,7 +59,8 @@ const buildFieldSchema = (attribute: IVehicleAttribute): z.ZodType => {
 
     case "BOOLEAN":
       return z.preprocess(
-        (value) => (value === "true" ? true : value === "false" ? false : value),
+        (value) =>
+          value === "true" ? true : value === "false" ? false : value,
         z.boolean({ message: `${label} must be yes or no` }),
       );
 

@@ -3,7 +3,10 @@ import { auth } from "../../middleware/checkAuth";
 import { authRateLimiter } from "../../middleware/rateLimiter";
 import { validateRequest } from "../../middleware/validateRequest";
 import { NotificationController } from "./notification.controller";
-import { UnsubscribeZodSchema, UpdatePreferencesZodSchema } from "./notification.validation";
+import {
+  UnsubscribeZodSchema,
+  UpdatePreferencesZodSchema,
+} from "./notification.validation";
 
 const router = Router();
 

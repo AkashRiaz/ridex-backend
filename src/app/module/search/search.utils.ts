@@ -1,8 +1,16 @@
 import httpStatus from "http-status";
 import { Prisma } from "../../../generated/prisma/client";
 import { AppError } from "../../utils/AppError";
-import { IVehicleAttribute } from "../vehicleType/vehicleType.interface";
-import { ISearchListingsInput, TSpecFilter } from "./search.interface";
+import {
+  IAttributeOption,
+  IVehicleAttribute,
+} from "../vehicleType/vehicleType.interface";
+import {
+  ICategoryCount,
+  IFeaturedCandidate,
+  ISearchListingsInput,
+  TSpecFilter,
+} from "./search.interface";
 
 // ============================================
 // Full-text query
@@ -46,7 +54,9 @@ export const parseSpecFilters = (
   query: Record<string, unknown>,
   attributes: IVehicleAttribute[] | null,
 ): TSpecFilter[] => {
-  const specParams = Object.entries(query).filter(([key]) => key.startsWith(SPEC_PREFIX));
+  const specParams = Object.entries(query).filter(([key]) =>
+    key.startsWith(SPEC_PREFIX),
+  );
 
   if (specParams.length === 0) return [];
 
@@ -57,19 +67,29 @@ export const parseSpecFilters = (
     );
   }
 
-  const ranges = new Map<string, { kind: "range"; key: string; min?: number; max?: number }>();
+  const ranges = new Map<
+    string,
+    { kind: "range"; key: string; min?: number; max?: number }
+  >();
   const filters: TSpecFilter[] = [];
 
   for (const [param, rawValue] of specParams) {
-    const value = Array.isArray(rawValue) ? String(rawValue[0] ?? "") : String(rawValue ?? "");
+    const value = Array.isArray(rawValue)
+      ? String(rawValue[0] ?? "")
+      : String(rawValue ?? "");
 
     if (value.trim() === "") continue;
 
     const [key, bound] = param.slice(SPEC_PREFIX.length).split(".");
-    const attribute = attributes.find((item) => item.key === key && item.filterable);
+    const attribute = attributes.find(
+      (item) => item.key === key && item.filterable,
+    );
 
     if (!attribute) {
-      throw new AppError(httpStatus.BAD_REQUEST, `"${key}" is not a filterable spec`);
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `"${key}" is not a filterable spec`,
+      );
     }
 
     if (attribute.type === "NUMBER") {
@@ -83,7 +103,10 @@ export const parseSpecFilters = (
       const number = Number(value);
 
       if (!Number.isFinite(number)) {
-        throw new AppError(httpStatus.BAD_REQUEST, `${attribute.label} filter must be a number`);
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `${attribute.label} filter must be a number`,
+        );
       }
 
       const range = ranges.get(key) ?? { kind: "range" as const, key };
@@ -98,7 +121,10 @@ export const parseSpecFilters = (
 
     if (attribute.type === "BOOLEAN") {
       if (value !== "true" && value !== "false") {
-        throw new AppError(httpStatus.BAD_REQUEST, `${attribute.label} filter must be true or false`);
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `${attribute.label} filter must be true or false`,
+        );
       }
 
       filters.push({ kind: "boolean", key, value: value === "true" });
@@ -118,7 +144,10 @@ export const parseSpecFilters = (
     const invalid = values.find((item) => !allowed.includes(item));
 
     if (invalid) {
-      throw new AppError(httpStatus.BAD_REQUEST, `"${invalid}" is not a valid ${attribute.label} option`);
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `"${invalid}" is not a valid ${attribute.label} option`,
+      );
     }
 
     filters.push({
@@ -139,11 +168,15 @@ const specFilterToSql = (filter: TSpecFilter): Prisma.Sql => {
       ];
 
       if (filter.min !== undefined) {
-        conditions.push(Prisma.sql`(l."specs" ->> ${filter.key})::numeric >= ${filter.min}`);
+        conditions.push(
+          Prisma.sql`(l."specs" ->> ${filter.key})::numeric >= ${filter.min}`,
+        );
       }
 
       if (filter.max !== undefined) {
-        conditions.push(Prisma.sql`(l."specs" ->> ${filter.key})::numeric <= ${filter.max}`);
+        conditions.push(
+          Prisma.sql`(l."specs" ->> ${filter.key})::numeric <= ${filter.max}`,
+        );
       }
 
       return Prisma.sql`(${Prisma.join(conditions, " AND ")})`;
@@ -153,7 +186,8 @@ const specFilterToSql = (filter: TSpecFilter): Prisma.Sql => {
     case "anyOf":
       return Prisma.sql`(${Prisma.join(
         filter.values.map(
-          (value) => Prisma.sql`l."specs" @> ${JSON.stringify({ [filter.key]: value })}::jsonb`,
+          (value) =>
+            Prisma.sql`l."specs" @> ${JSON.stringify({ [filter.key]: value })}::jsonb`,
         ),
         " OR ",
       )})`;
@@ -197,7 +231,9 @@ export const buildSearchSql = (input: ISearchListingsInput) => {
   ];
 
   if (tsQuery) {
-    conditions.push(Prisma.sql`l."search_vector" @@ to_tsquery('simple', ${tsQuery})`);
+    conditions.push(
+      Prisma.sql`l."search_vector" @@ to_tsquery('simple', ${tsQuery})`,
+    );
   }
 
   if (input.vehicleTypeId) {
@@ -209,7 +245,9 @@ export const buildSearchSql = (input: ISearchListingsInput) => {
   }
 
   if (input.vehicleModelIds?.length) {
-    conditions.push(Prisma.sql`l."vehicleModelId" = ANY(${input.vehicleModelIds})`);
+    conditions.push(
+      Prisma.sql`l."vehicleModelId" = ANY(${input.vehicleModelIds})`,
+    );
   }
 
   if (input.minPrice !== undefined) {
@@ -257,7 +295,8 @@ export const buildSearchSql = (input: ISearchListingsInput) => {
   if (input.near) {
     const { lat, lng, radiusKm } = input.near;
     const latDelta = radiusKm / 111;
-    const lngDelta = radiusKm / (111 * Math.max(Math.cos((lat * Math.PI) / 180), 0.01));
+    const lngDelta =
+      radiusKm / (111 * Math.max(Math.cos((lat * Math.PI) / 180), 0.01));
 
     distance = distanceSql(lat, lng);
 
@@ -274,7 +313,8 @@ export const buildSearchSql = (input: ISearchListingsInput) => {
     : Prisma.sql`0`;
 
   const sortBy =
-    (input.sortBy === "relevance" && !tsQuery) || (input.sortBy === "nearest" && !input.near)
+    (input.sortBy === "relevance" && !tsQuery) ||
+    (input.sortBy === "nearest" && !input.near)
       ? "newest"
       : input.sortBy;
 
@@ -306,4 +346,94 @@ export type TSearchRow = {
   total: number;
   rank: number;
   distance: number | null;
+};
+
+// ============================================
+// Homepage: featured ranking + category counts
+// ============================================
+
+export const FEATURED_LIMIT = 12;
+
+// saves and chats are counted over this many days
+export const FEATURED_ACTIVITY_DAYS = 30;
+
+// new listings get a boost that fades out over this many days
+const FRESHNESS_DAYS = 14;
+
+const FRESHNESS_MAX_POINTS = 6;
+
+const VERIFIED_SELLER_POINTS = 4;
+
+// a listing without photos looks broken in a featured row, so photos come first
+const PHOTO_POINTS = 10;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/*
+ * Activity score until paid boosts arrive (Phase 2):
+ * saves ×3 + chats ×2 + views ÷ 50, plus bonuses for having photos,
+ * a verified seller, and freshness (fades to 0 after FRESHNESS_DAYS).
+ */
+export const scoreFeaturedListing = (
+  candidate: IFeaturedCandidate,
+  now = new Date(),
+) => {
+  const ageDays = Math.max(
+    0,
+    (now.getTime() - candidate.publishedAt.getTime()) / DAY_MS,
+  );
+  const freshness =
+    Math.max(0, 1 - ageDays / FRESHNESS_DAYS) * FRESHNESS_MAX_POINTS;
+
+  return (
+    candidate.saves * 3 +
+    candidate.chats * 2 +
+    candidate.views / 50 +
+    (candidate.hasPhoto ? PHOTO_POINTS : 0) +
+    (candidate.verifiedSeller ? VERIFIED_SELLER_POINTS : 0) +
+    freshness
+  );
+};
+
+/*
+ * Highest score first; ties go to the newer listing, then id (stable order).
+ */
+export const rankFeaturedListings = (
+  candidates: IFeaturedCandidate[],
+  limit = FEATURED_LIMIT,
+  now = new Date(),
+) =>
+  candidates
+    .map((candidate) => ({
+      candidate,
+      score: scoreFeaturedListing(candidate, now),
+    }))
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        b.candidate.publishedAt.getTime() - a.candidate.publishedAt.getTime() ||
+        a.candidate.id.localeCompare(b.candidate.id),
+    )
+    .slice(0, limit)
+    .map((item) => item.candidate.id);
+
+/*
+ * Every option of the category attribute, in schema order, with its live count.
+ * Values in listings that are no longer an option are ignored.
+ */
+export const toCategoryCounts = (
+  options: IAttributeOption[],
+  rows: { value: string | null; count: number }[],
+): ICategoryCount[] => {
+  const countByValue = new Map(
+    rows
+      .filter((row) => row.value !== null)
+      .map((row) => [row.value as string, row.count]),
+  );
+
+  return options.map((option) => ({
+    value: option.value,
+    label: option.label,
+    count: countByValue.get(option.value) ?? 0,
+  }));
 };

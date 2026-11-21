@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.9.0] — Phase 1 review: conventions, demo seed, docs (2026-11-21)
+
+### Changed
+- **Timestamps (CONVENTIONS §A8):** `updatedAt` added to ListingImage, Message, Notification, RefreshToken, UserBlock, VerificationDocument, WishlistItem and BrandVehicleType; RecentlyViewed gets `createdAt` + `updatedAt` (it keeps `viewedAt`). Migration `timestamps_updated_at` backfills existing rows from `createdAt` / `viewedAt`.
+- **Formatting:** Biome `format --write` over `src/` and `tests/` (91 files, layout only). `format:check` now passes.
+- **Lint:** Node built-ins use the `node:` prefix; unused handler parameters are `_req` / `_res`. The remaining 6 warnings are `process.env.X!` in `config`, kept to match the reference.
+
+### Added
+- **`npm run seed`** now also creates (all steps idempotent):
+  - Extra accounts: `buyer2@ridex.demo`, `dealer2@ridex.demo` (unverified dealer), `blocked@ridex.demo` (BLOCKED) and `deleted@ridex.demo` (soft-deleted).
+  - Listings in every status: 3 pending, 1 rejected with a reason, 1 draft, 2 sold, 2 approved listings that expire within 7 days.
+  - Trust: the seller is phone + ID verified and the dealer is phone + dealer verified, each with an approved request and an audit entry.
+  - Pending ID (buyer2) and dealer (dealer2) verification requests. Their documents are generated placeholder PNGs uploaded privately to Cloudinary (skipped when Cloudinary is not configured).
+  - Moderation history: audit APPROVE / REJECT entries by the demo moderator for the seeded decisions.
+  - Saved bikes (one already sold), recently viewed, a block (buyer2 → blocked) and 3 seller quick replies.
+  - Reviews: 5★ with a seller reply, 4★ for the dealer, and a 1★ review hidden by the moderator.
+  - Reports: open (listing, message), in review (user), resolved (review hidden) and dismissed (listing).
+  - A table of every demo login at the end (passwords are never printed).
+- **Postman:** a "Demo Logins" folder (one request per seeded role). Login-type requests save `accessToken` / `refreshToken`, and create requests save the new id (`listingId`, `brandId`, …). New `RideX.postman_environment.json` ("RideX Local") with empty password placeholders.
+
+## [0.8.0] — Phase 1 · Part 7: public homepage data (2026-11-21)
+
+### Added
+- **`GET /search/home`** (public): everything the homepage needs in one call.
+  - `featured`: up to 12 approved listings. Until paid boosts arrive (Phase 2) they are ranked by saves ×3 + chats ×2 (both over the last 30 days) + views ÷ 50, with bonuses for having photos, a verified seller (ID or dealer) and freshness (fades out over 14 days). The most viewed and the newest 40 listings are ranked together, so a new listing can be featured before it has views.
+  - `categories`: every option of the bike `bikeCategory` attribute, in schema order, with its live listing count.
+  - `brands`: the top 12 active brands (popular first, then by live listings) with counts.
+  - `vehicleTypes`: active types with live listing counts.
+  - `stats`: live listings, verified sellers, districts with live listings, and bikes sold in the last 30 days.
+- Cached in Redis under `search:home` for `HOME_CACHE_SECONDS` (default 300, 0 turns it off). A Redis failure falls back to the database.
+- **Config/env**: `HOME_CACHE_SECONDS`.
+- **Tests**: featured scoring and ranking (weights, bonuses, ties, limit) and category count mapping.
+- **Postman**: Search → Homepage Data.
+
 ## [0.7.0] — Phase 1 · Part 6: role dashboards + audit log (2026-11-21)
 
 ### Added

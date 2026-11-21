@@ -67,14 +67,21 @@ export const listingCardInclude = {
   },
   brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
   vehicleModel: { select: { id: true, name: true, slug: true } },
-  vehicleType: { select: { id: true, name: true, slug: true, attributes: true } },
+  vehicleType: {
+    select: { id: true, name: true, slug: true, attributes: true },
+  },
   _count: { select: { images: true } },
   seller: { select: sellerSummarySelect },
 } satisfies Prisma.ListingInclude;
 
-type TListingCardRow = Prisma.ListingGetPayload<{ include: typeof listingCardInclude }>;
+type TListingCardRow = Prisma.ListingGetPayload<{
+  include: typeof listingCardInclude;
+}>;
 
-export const toListingCard = (listing: TListingCardRow, distanceKm?: number | null) => ({
+export const toListingCard = (
+  listing: TListingCardRow,
+  distanceKm?: number | null,
+) => ({
   id: listing.id,
   slug: listing.slug,
   title: listing.title,
@@ -136,10 +143,14 @@ const detailInclude = {
   },
   brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
   vehicleModel: { select: { id: true, name: true, slug: true } },
-  vehicleType: { select: { id: true, name: true, slug: true, icon: true, attributes: true } },
+  vehicleType: {
+    select: { id: true, name: true, slug: true, icon: true, attributes: true },
+  },
 } satisfies Prisma.ListingInclude;
 
-type TListingDetailRow = Prisma.ListingGetPayload<{ include: typeof detailInclude }>;
+type TListingDetailRow = Prisma.ListingGetPayload<{
+  include: typeof detailInclude;
+}>;
 
 const toListingDetail = (listing: TListingDetailRow) => {
   const { searchText: _searchText, ...rest } = listing;
@@ -175,7 +186,9 @@ const toListingDetail = (listing: TListingDetailRow) => {
 // ============================================
 
 const findListingOrThrow = async (id: string, db: TDb = prisma) => {
-  const listing = await db.listing.findFirst({ where: { id, isDeleted: false } });
+  const listing = await db.listing.findFirst({
+    where: { id, isDeleted: false },
+  });
 
   if (!listing) {
     throw new AppError(httpStatus.NOT_FOUND, "Listing not found");
@@ -186,7 +199,10 @@ const findListingOrThrow = async (id: string, db: TDb = prisma) => {
 
 const getDetail = async (id: string, db: TDb = prisma) =>
   toListingDetail(
-    await db.listing.findUniqueOrThrow({ where: { id }, include: detailInclude }),
+    await db.listing.findUniqueOrThrow({
+      where: { id },
+      include: detailInclude,
+    }),
   );
 
 /*
@@ -204,7 +220,9 @@ const resolveCatalog = async (
       where: { brandId_vehicleTypeId: { brandId, vehicleTypeId } },
       include: { brand: true },
     }),
-    vehicleModelId ? prisma.vehicleModel.findUnique({ where: { id: vehicleModelId } }) : null,
+    vehicleModelId
+      ? prisma.vehicleModel.findUnique({ where: { id: vehicleModelId } })
+      : null,
   ]);
 
   if (!vehicleType?.isActive) {
@@ -248,9 +266,17 @@ const resolveCoordinates = (
   latitude: number | null | undefined,
   longitude: number | null | undefined,
 ) => {
-  if (latitude !== undefined && latitude !== null && longitude !== undefined && longitude !== null) {
+  if (
+    latitude !== undefined &&
+    latitude !== null &&
+    longitude !== undefined &&
+    longitude !== null
+  ) {
     if (!isInsideBangladesh(latitude, longitude)) {
-      throw new AppError(httpStatus.BAD_REQUEST, "Location must be inside Bangladesh");
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Location must be inside Bangladesh",
+      );
     }
 
     return { latitude, longitude };
@@ -258,7 +284,9 @@ const resolveCoordinates = (
 
   const centre = findDistrict(division, district);
 
-  return centre ? { latitude: centre.lat, longitude: centre.lng } : { latitude: null, longitude: null };
+  return centre
+    ? { latitude: centre.lat, longitude: centre.lng }
+    : { latitude: null, longitude: null };
 };
 
 /*
@@ -297,7 +325,12 @@ export const syncSearch = async (listingId: string, db: TDb = prisma) => {
   `;
 };
 
-const listingRef = (listing: { id: string; sellerId: string; title: string; slug: string }) => ({
+const listingRef = (listing: {
+  id: string;
+  sellerId: string;
+  title: string;
+  slug: string;
+}) => ({
   listingId: listing.id,
   sellerId: listing.sellerId,
   title: listing.title,
@@ -315,7 +348,9 @@ const createListingDraft = async (
   requestUser: RequestUser,
   payload: ICreateListingDraftPayload,
 ) => {
-  const seller = await prisma.user.findUniqueOrThrow({ where: { id: requestUser.userId } });
+  const seller = await prisma.user.findUniqueOrThrow({
+    where: { id: requestUser.userId },
+  });
 
   if (seller.status !== UserStatus.ACTIVE) {
     throw new AppError(
@@ -339,12 +374,16 @@ const createListingDraft = async (
 
   // pre-fill location from the seller's profile
   const hasProfileLocation = Boolean(
-    seller.division && seller.district && findDistrict(seller.division, seller.district),
+    seller.division &&
+      seller.district &&
+      findDistrict(seller.division, seller.district),
   );
   const division = hasProfileLocation ? (seller.division as string) : "";
   const district = hasProfileLocation ? (seller.district as string) : "";
 
-  const title = [brand.name, vehicleModel?.name, payload.year].filter(Boolean).join(" ");
+  const title = [brand.name, vehicleModel?.name, payload.year]
+    .filter(Boolean)
+    .join(" ");
 
   const listing = await prisma.listing.create({
     data: {
@@ -356,7 +395,9 @@ const createListingDraft = async (
       year: payload.year,
       title,
       price: 0,
-      specs: (defaultSpecs?.success ? defaultSpecs.data : {}) as Prisma.InputJsonValue,
+      specs: (defaultSpecs?.success
+        ? defaultSpecs.data
+        : {}) as Prisma.InputJsonValue,
       division,
       district,
       area: hasProfileLocation ? seller.area : null,
@@ -386,9 +427,15 @@ const updateListing = async (
   const vehicleTypeId = payload.vehicleTypeId ?? listing.vehicleTypeId;
   const brandId = payload.brandId ?? listing.brandId;
   const vehicleModelId =
-    payload.vehicleModelId === undefined ? listing.vehicleModelId : payload.vehicleModelId;
+    payload.vehicleModelId === undefined
+      ? listing.vehicleModelId
+      : payload.vehicleModelId;
 
-  const { attributes } = await resolveCatalog(vehicleTypeId, brandId, vehicleModelId);
+  const { attributes } = await resolveCatalog(
+    vehicleTypeId,
+    brandId,
+    vehicleModelId,
+  );
 
   /*
    * Specs: drafts/rejected may be incomplete; submitted listings must stay complete.
@@ -397,12 +444,15 @@ const updateListing = async (
   const typeChanged = vehicleTypeId !== listing.vehicleTypeId;
   const specsInput = payload.specs ?? (typeChanged ? {} : listing.specs);
   const isIncompleteAllowed =
-    listing.status === ListingStatus.DRAFT || listing.status === ListingStatus.REJECTED;
+    listing.status === ListingStatus.DRAFT ||
+    listing.status === ListingStatus.REJECTED;
 
   let specs: TSpecs | undefined;
 
   if (payload.specs !== undefined || typeChanged) {
-    const result = validateSpecs(attributes, specsInput, { partial: isIncompleteAllowed });
+    const result = validateSpecs(attributes, specsInput, {
+      partial: isIncompleteAllowed,
+    });
 
     if (!result.success) {
       throw new AppError(httpStatus.BAD_REQUEST, result.message);
@@ -420,20 +470,35 @@ const updateListing = async (
     payload.district !== undefined ||
     payload.latitude !== undefined;
 
-  let location: { division: string; district: string; latitude: number | null; longitude: number | null } | undefined;
+  let location:
+    | {
+        division: string;
+        district: string;
+        latitude: number | null;
+        longitude: number | null;
+      }
+    | undefined;
 
   if (locationChanged) {
     const division = payload.division ?? listing.division;
     const district = payload.district ?? listing.district;
 
     if ((division || district) && !findDistrict(division, district)) {
-      throw new AppError(httpStatus.BAD_REQUEST, "Choose a valid division and district");
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Choose a valid division and district",
+      );
     }
 
     location = {
       division,
       district,
-      ...resolveCoordinates(division, district, payload.latitude, payload.longitude),
+      ...resolveCoordinates(
+        division,
+        district,
+        payload.latitude,
+        payload.longitude,
+      ),
     };
   }
 
@@ -447,7 +512,11 @@ const updateListing = async (
   };
   const backToReview =
     listing.status === ListingStatus.APPROVED &&
-    isMajorEdit(comparable, { ...payload, ...(specs && { specs }), vehicleModelId });
+    isMajorEdit(comparable, {
+      ...payload,
+      ...(specs && { specs }),
+      vehicleModelId,
+    });
 
   const oldPrice = Number(listing.price);
   const isPriceDrop =
@@ -465,13 +534,21 @@ const updateListing = async (
         vehicleModelId,
         ...(payload.year !== undefined && { year: payload.year }),
         ...(payload.title !== undefined && { title: payload.title }),
-        ...(payload.description !== undefined && { description: payload.description }),
+        ...(payload.description !== undefined && {
+          description: payload.description,
+        }),
         ...(payload.price !== undefined && { price: payload.price }),
-        ...(payload.isNegotiable !== undefined && { isNegotiable: payload.isNegotiable }),
-        ...(payload.condition !== undefined && { condition: payload.condition }),
+        ...(payload.isNegotiable !== undefined && {
+          isNegotiable: payload.isNegotiable,
+        }),
+        ...(payload.condition !== undefined && {
+          condition: payload.condition,
+        }),
         ...(payload.mileage !== undefined && { mileage: payload.mileage }),
         ...(payload.color !== undefined && { color: payload.color || null }),
-        ...(payload.videoUrl !== undefined && { videoUrl: payload.videoUrl || null }),
+        ...(payload.videoUrl !== undefined && {
+          videoUrl: payload.videoUrl || null,
+        }),
         ...(payload.area !== undefined && { area: payload.area || null }),
         ...(specs && { specs: specs as Prisma.InputJsonValue }),
         ...location,
@@ -525,7 +602,10 @@ const addListingImages = async (
   }
 
   if (files.some((file) => !file.mimetype.startsWith("image/"))) {
-    throw new AppError(httpStatus.UNSUPPORTED_MEDIA_TYPE, "Only image files can be uploaded");
+    throw new AppError(
+      httpStatus.UNSUPPORTED_MEDIA_TYPE,
+      "Only image files can be uploaded",
+    );
   }
 
   const existing = await prisma.listingImage.findMany({
@@ -550,12 +630,25 @@ const addListingImages = async (
 
   const uploaded = uploads
     .filter((result) => result.status === "fulfilled")
-    .map((result) => (result as PromiseFulfilledResult<{ secure_url: string; public_id: string }>).value);
+    .map(
+      (result) =>
+        (
+          result as PromiseFulfilledResult<{
+            secure_url: string;
+            public_id: string;
+          }>
+        ).value,
+    );
 
   // all-or-nothing: clean up partial uploads
   if (uploaded.length !== files.length) {
-    await Promise.all(uploaded.map((image) => deleteFromCloudinary(image.public_id)));
-    throw new AppError(httpStatus.BAD_GATEWAY, "Photo upload failed. Please try again.");
+    await Promise.all(
+      uploaded.map((image) => deleteFromCloudinary(image.public_id)),
+    );
+    throw new AppError(
+      httpStatus.BAD_GATEWAY,
+      "Photo upload failed. Please try again.",
+    );
   }
 
   const nextSortOrder = (existing[0]?.sortOrder ?? -1) + 1;
@@ -598,12 +691,17 @@ const reorderListingImages = async (
 
   assertListingOwner(listing, requestUser.userId);
 
-  const images = await prisma.listingImage.findMany({ where: { listingId: id } });
+  const images = await prisma.listingImage.findMany({
+    where: { listingId: id },
+  });
 
   const currentIds = new Set(images.map((image) => image.id));
   const order = Array.from(new Set(payload.order));
 
-  if (order.length !== currentIds.size || order.some((imageId) => !currentIds.has(imageId))) {
+  if (
+    order.length !== currentIds.size ||
+    order.some((imageId) => !currentIds.has(imageId))
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       "Order must contain every photo of this listing exactly once",
@@ -611,10 +709,15 @@ const reorderListingImages = async (
   }
 
   const coverImageId =
-    payload.coverImageId ?? images.find((image) => image.isCover)?.id ?? order[0];
+    payload.coverImageId ??
+    images.find((image) => image.isCover)?.id ??
+    order[0];
 
   if (!currentIds.has(coverImageId)) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Cover photo must belong to this listing");
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Cover photo must belong to this listing",
+    );
   }
 
   await prisma.$transaction(
@@ -650,7 +753,10 @@ const deleteListingImage = async (
   }
 
   if (listing.status !== ListingStatus.DRAFT && images.length === 1) {
-    throw new AppError(httpStatus.CONFLICT, "A listing needs at least one photo");
+    throw new AppError(
+      httpStatus.CONFLICT,
+      "A listing needs at least one photo",
+    );
   }
 
   await prisma.$transaction(async (tx) => {
@@ -659,7 +765,10 @@ const deleteListingImage = async (
     const nextCover = images.find((item) => item.id !== imageId);
 
     if (image.isCover && nextCover) {
-      await tx.listingImage.update({ where: { id: nextCover.id }, data: { isCover: true } });
+      await tx.listingImage.update({
+        where: { id: nextCover.id },
+        data: { isCover: true },
+      });
     }
   });
 
@@ -680,11 +789,17 @@ const submitListing = async (requestUser: RequestUser, id: string) => {
   assertTransition(listing.status, ListingStatus.PENDING);
 
   const [vehicleType, imageCount] = await Promise.all([
-    prisma.vehicleType.findUniqueOrThrow({ where: { id: listing.vehicleTypeId } }),
+    prisma.vehicleType.findUniqueOrThrow({
+      where: { id: listing.vehicleTypeId },
+    }),
     prisma.listingImage.count({ where: { listingId: id } }),
   ]);
 
-  const problems = getSubmitProblems(listing, imageCount, parseAttributes(vehicleType.attributes));
+  const problems = getSubmitProblems(
+    listing,
+    imageCount,
+    parseAttributes(vehicleType.attributes),
+  );
 
   if (problems.length > 0) {
     throw new AppError(
@@ -717,7 +832,10 @@ const updateListingStatus = async (
 
   const isApprove = payload.status === ListingStatus.APPROVED;
 
-  assertTransition(listing.status, isApprove ? ListingStatus.APPROVED : ListingStatus.REJECTED);
+  assertTransition(
+    listing.status,
+    isApprove ? ListingStatus.APPROVED : ListingStatus.REJECTED,
+  );
 
   const updated = await prisma.$transaction(async (tx) => {
     const result = await tx.listing.update({
@@ -754,7 +872,10 @@ const updateListingStatus = async (
 
   // Side effects AFTER commit
   if (isApprove) {
-    appEvents.emit("listing.approved", { ...listingRef(updated), approvedById: staff.userId });
+    appEvents.emit("listing.approved", {
+      ...listingRef(updated),
+      approvedById: staff.userId,
+    });
   } else {
     appEvents.emit("listing.rejected", {
       ...listingRef(updated),
@@ -788,7 +909,10 @@ const renewListing = async (requestUser: RequestUser, id: string) => {
   assertListingOwner(listing, requestUser.userId);
 
   if (listing.status !== ListingStatus.EXPIRED) {
-    throw new AppError(httpStatus.CONFLICT, "Only expired listings can be renewed");
+    throw new AppError(
+      httpStatus.CONFLICT,
+      "Only expired listings can be renewed",
+    );
   }
 
   await prisma.listing.update({
@@ -799,10 +923,15 @@ const renewListing = async (requestUser: RequestUser, id: string) => {
   return getDetail(id);
 };
 
-const deleteListing = async (requestUser: RequestUser, id: string, meta: IRequestMeta) => {
+const deleteListing = async (
+  requestUser: RequestUser,
+  id: string,
+  meta: IRequestMeta,
+) => {
   const listing = await findListingOrThrow(id);
 
-  const isAdmin = requestUser.role === Role.ADMIN || requestUser.role === Role.SUPER_ADMIN;
+  const isAdmin =
+    requestUser.role === Role.ADMIN || requestUser.role === Role.SUPER_ADMIN;
 
   if (!isAdmin) {
     assertListingOwner(listing, requestUser.userId);
@@ -836,14 +965,19 @@ const deleteListing = async (requestUser: RequestUser, id: string, meta: IReques
 const getMyListings = async (userId: string, query: IQuery) => {
   const { page, limit, skip } = queryBuilder.buildPagination(query, 12);
 
-  const andConditions: ListingWhereInput[] = [{ sellerId: userId }, { isDeleted: false }];
+  const andConditions: ListingWhereInput[] = [
+    { sellerId: userId },
+    { isDeleted: false },
+  ];
 
   if (query.status && Object.values(ListingStatus).includes(query.status)) {
     andConditions.push({ status: query.status });
   }
 
   if (query.searchTerm) {
-    andConditions.push({ title: { contains: query.searchTerm, mode: "insensitive" } });
+    andConditions.push({
+      title: { contains: query.searchTerm, mode: "insensitive" },
+    });
   }
 
   const [listings, total, statusCounts] = await Promise.all([
@@ -890,14 +1024,18 @@ const getManagedListings = async (query: IQuery) => {
       OR: [
         { title: { contains: query.searchTerm, mode: "insensitive" } },
         { searchText: { contains: query.searchTerm, mode: "insensitive" } },
-        { seller: { name: { contains: query.searchTerm, mode: "insensitive" } } },
+        {
+          seller: { name: { contains: query.searchTerm, mode: "insensitive" } },
+        },
       ],
     });
   }
 
   if (query.vehicleType) {
     andConditions.push({
-      vehicleType: isUuid(query.vehicleType) ? { id: query.vehicleType } : { slug: query.vehicleType },
+      vehicleType: isUuid(query.vehicleType)
+        ? { id: query.vehicleType }
+        : { slug: query.vehicleType },
     });
   }
 
@@ -913,7 +1051,9 @@ const getManagedListings = async (query: IQuery) => {
 
   // the moderation queue is first-come, first-served
   const orderBy: Prisma.ListingOrderByWithRelationInput =
-    query.status === ListingStatus.PENDING ? { submittedAt: "asc" } : { updatedAt: "desc" };
+    query.status === ListingStatus.PENDING
+      ? { submittedAt: "asc" }
+      : { updatedAt: "desc" };
 
   const [listings, total, statusCounts] = await Promise.all([
     prisma.listing.findMany({
@@ -937,7 +1077,10 @@ const getManagedListings = async (query: IQuery) => {
   return {
     data: listings.map((listing) => ({
       ...toListingCard(listing),
-      seller: { ...toSellerSummary(listing.seller), email: listing.seller.email },
+      seller: {
+        ...toSellerSummary(listing.seller),
+        email: listing.seller.email,
+      },
     })),
     meta: {
       ...queryBuilder.buildMeta(page, limit, total),
@@ -965,10 +1108,15 @@ const getListingByIdOrSlug = async (
     include: detailInclude,
   });
 
-  const isOwner = Boolean(viewer && listing && listing.sellerId === viewer.userId);
+  const isOwner = Boolean(
+    viewer && listing && listing.sellerId === viewer.userId,
+  );
   const canSeeUnpublished = isOwner || isStaff(viewer?.role);
 
-  if (!listing || (!PUBLIC_STATUSES.includes(listing.status) && !canSeeUnpublished)) {
+  if (
+    !listing ||
+    (!PUBLIC_STATUSES.includes(listing.status) && !canSeeUnpublished)
+  ) {
     throw new AppError(httpStatus.NOT_FOUND, "Listing not found");
   }
 
@@ -982,10 +1130,14 @@ const getListingByIdOrSlug = async (
         .slice(0, 24);
 
     try {
-      const isNewView = await redisClient.set(`listing-view:${listing.id}:${viewerKey}`, "1", {
-        condition: "NX",
-        expiration: { type: "EX", value: 24 * 60 * 60 },
-      });
+      const isNewView = await redisClient.set(
+        `listing-view:${listing.id}:${viewerKey}`,
+        "1",
+        {
+          condition: "NX",
+          expiration: { type: "EX", value: 24 * 60 * 60 },
+        },
+      );
 
       if (isNewView) {
         // raw update: counting a view must not bump updatedAt
@@ -1030,7 +1182,9 @@ const getSimilarListings = async (idOrSlug: string) => {
       status: ListingStatus.APPROVED,
       vehicleTypeId: listing.vehicleTypeId,
       OR: [
-        ...(listing.vehicleModelId ? [{ vehicleModelId: listing.vehicleModelId }] : []),
+        ...(listing.vehicleModelId
+          ? [{ vehicleModelId: listing.vehicleModelId }]
+          : []),
         { brandId: listing.brandId },
         { price: { gte: price * 0.75, lte: price * 1.25 } },
       ],
@@ -1042,7 +1196,10 @@ const getSimilarListings = async (idOrSlug: string) => {
 
   // same model first, then same brand, then closest price
   const score = (candidate: (typeof candidates)[number]) =>
-    (candidate.vehicleModelId && candidate.vehicleModelId === listing.vehicleModelId ? 0 : 2) +
+    (candidate.vehicleModelId &&
+    candidate.vehicleModelId === listing.vehicleModelId
+      ? 0
+      : 2) +
     (candidate.brandId === listing.brandId ? 0 : 1) +
     Math.abs(Number(candidate.price) - price) / Math.max(price, 1);
 

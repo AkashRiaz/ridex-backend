@@ -16,7 +16,9 @@ export const sellerSummarySelect = {
   ratingCount: true,
 } satisfies Prisma.UserSelect;
 
-type TSellerSummaryRow = Prisma.UserGetPayload<{ select: typeof sellerSummarySelect }>;
+type TSellerSummaryRow = Prisma.UserGetPayload<{
+  select: typeof sellerSummarySelect;
+}>;
 
 export const toSellerBadges = (user: {
   phoneVerified: boolean;

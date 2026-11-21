@@ -1,4 +1,4 @@
-import { Server as HttpServer } from "http";
+import { Server as HttpServer } from "node:http";
 import { JwtPayload } from "jsonwebtoken";
 import { Server, Socket } from "socket.io";
 import { config } from "../config";

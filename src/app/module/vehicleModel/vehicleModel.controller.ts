@@ -77,7 +77,10 @@ const updateVehicleModel = catchAsync(async (req: Request, res: Response) => {
 const deleteVehicleModel = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const result = await VehicleModelService.deleteVehicleModel(id as string, getAuditActor(req));
+  const result = await VehicleModelService.deleteVehicleModel(
+    id as string,
+    getAuditActor(req),
+  );
 
   sendResponse(res, {
     success: true,

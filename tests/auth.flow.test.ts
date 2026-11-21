@@ -39,7 +39,9 @@ describe.skipIf(!isIntegration)("auth + user flow (integration)", () => {
 
   beforeAll(async () => {
     await redisClient.connect();
-    await prisma.user.deleteMany({ where: { email: { endsWith: `@${TEST_DOMAIN}` } } });
+    await prisma.user.deleteMany({
+      where: { email: { endsWith: `@${TEST_DOMAIN}` } },
+    });
   });
 
   afterAll(async () => {
@@ -202,7 +204,12 @@ describe.skipIf(!isIntegration)("auth + user flow (integration)", () => {
   it("registers with phone, verifies, then logs in with a phone OTP", async () => {
     const register = await request(app)
       .post(`${api}/auth/register`)
-      .send({ name: "Phone Rider", phone: `0${phone.slice(4)}`, password, role: "BUYER" });
+      .send({
+        name: "Phone Rider",
+        phone: `0${phone.slice(4)}`,
+        password,
+        role: "BUYER",
+      });
     expect(register.status).toBe(201);
     expect(register.body.data.user.phone).toBe(phone);
 

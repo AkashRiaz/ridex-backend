@@ -80,6 +80,22 @@
     {
       "key": "auditLogId",
       "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "demoPassword",
+      "value": ""
+    },
+    {
+      "key": "superAdminEmail",
+      "value": ""
+    },
+    {
+      "key": "superAdminPassword",
+      "value": ""
     }
   ],
   "auth": {
@@ -134,6 +150,382 @@
       ]
     },
     {
+      "name": "Demo Logins",
+      "description": "Run `npm run seed` first. Each request logs in one seeded account and saves {{accessToken}} for every other request. Set demoPassword (= DEMO_USER_PASSWORD) and superAdminEmail / superAdminPassword in the RideX Local environment. blocked@ridex.demo and deleted@ridex.demo exist to test that blocked and deleted accounts cannot log in.",
+      "item": [
+        {
+          "name": "Login as Super Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{superAdminEmail}}\",\n  \"password\": \"{{superAdminPassword}}\"\n}"
+            },
+            "description": "Seeded Super Admin account. Saves the access token."
+          }
+        },
+        {
+          "name": "Login as Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"admin@ridex.demo\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "description": "Seeded Admin account. Saves the access token."
+          }
+        },
+        {
+          "name": "Login as Moderator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"moderator@ridex.demo\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "description": "Seeded Moderator account. Saves the access token."
+          }
+        },
+        {
+          "name": "Login as Dealer (verified)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"dealer@ridex.demo\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "description": "Seeded Dealer (verified) account. Saves the access token."
+          }
+        },
+        {
+          "name": "Login as Dealer Two (pending verification)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"dealer2@ridex.demo\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "description": "Seeded Dealer Two (pending verification) account. Saves the access token."
+          }
+        },
+        {
+          "name": "Login as Dealer Staff",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"dealer.staff@ridex.demo\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "description": "Seeded Dealer Staff account. Saves the access token."
+          }
+        },
+        {
+          "name": "Login as Seller (verified)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"seller@ridex.demo\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "description": "Seeded Seller (verified) account. Saves the access token."
+          }
+        },
+        {
+          "name": "Login as Inspector",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"inspector@ridex.demo\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "description": "Seeded Inspector account. Saves the access token."
+          }
+        },
+        {
+          "name": "Login as Buyer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"buyer@ridex.demo\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "description": "Seeded Buyer account. Saves the access token."
+          }
+        },
+        {
+          "name": "Login as Buyer Two (pending ID)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"buyer2@ridex.demo\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "description": "Seeded Buyer Two (pending ID) account. Saves the access token."
+          }
+        }
+      ]
+    },
+    {
       "name": "Auth",
       "item": [
         {
@@ -176,7 +568,23 @@
               "raw": "{\n  \"email\": \"rahim@example.com\",\n  \"otp\": \"123456\"\n}"
             },
             "description": "Marks the email verified and returns tokens (also set as cookies)."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Resend Email OTP",
@@ -238,7 +646,23 @@
               "raw": "{\n  \"phone\": \"01712345678\",\n  \"otp\": \"123456\",\n  \"purpose\": \"VERIFY\"\n}"
             },
             "description": "Returns tokens for both purposes."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Login",
@@ -259,7 +683,23 @@
               "raw": "{\n  \"identifier\": \"rahim@example.com\",\n  \"password\": \"Ride@2026x\"\n}"
             },
             "description": "identifier = email or phone. Requires at least one verified contact."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Google Login",
@@ -280,7 +720,23 @@
               "raw": "{\n  \"idToken\": \"<google id token>\"\n}"
             },
             "description": "Only when ENABLE_GOOGLE_LOGIN=true. Unknown emails become BUYER accounts."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Refresh Token",
@@ -291,7 +747,23 @@
               "type": "noauth"
             },
             "description": "Uses the refreshToken cookie (or {\"refreshToken\": \"...\"} in the body). Rotates the token; replaying an old one revokes every session."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  if (json.data.refreshToken) pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  if (json.data.user && json.data.user.id) pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Me",
@@ -471,7 +943,21 @@
               "raw": "{\n  \"name\": \"Karim Moderator\",\n  \"email\": \"karim@example.com\",\n  \"role\": \"MODERATOR\"\n}"
             },
             "description": "SUPER_ADMIN, ADMIN. A temporary password is emailed; the user must change it. Only SUPER_ADMIN can create ADMIN."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('userId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get All Users",
@@ -616,7 +1102,21 @@
               "raw": "{\n  \"name\": \"Car\",\n  \"icon\": \"car\",\n  \"sortOrder\": 2,\n  \"attributes\": []\n}"
             },
             "description": "SUPER_ADMIN, ADMIN. JSON, or multipart with an `image` file + `data` JSON."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('vehicleTypeId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get All Vehicle Types",
@@ -710,7 +1210,21 @@
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('brandId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get All Brands",
@@ -786,7 +1300,21 @@
               "raw": "{\n  \"brandId\": \"{{brandId}}\",\n  \"vehicleTypeId\": \"{{vehicleTypeId}}\",\n  \"name\": \"TRK 251\",\n  \"yearFrom\": 2023,\n  \"defaultSpecs\": {\n    \"engineCapacity\": 249,\n    \"bikeCategory\": \"adventure\",\n    \"abs\": \"dual-channel\"\n  }\n}"
             },
             "description": "SUPER_ADMIN, ADMIN. defaultSpecs are validated against the vehicle type's attributes (partial). Optional multipart `image`."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('vehicleModelId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get All Vehicle Models",
@@ -857,7 +1385,22 @@
               "raw": "{\n  \"vehicleTypeId\": \"{{vehicleTypeId}}\",\n  \"brandId\": \"{{brandId}}\",\n  \"vehicleModelId\": \"{{vehicleModelId}}\",\n  \"year\": 2023\n}"
             },
             "description": "SELLER, DEALER (active). Specs auto-fill from the model's default specs; location from the seller profile."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('listingId', json.data.id);",
+                  "  if (json.data.slug) pm.collectionVariables.set('listingSlug', json.data.slug);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Update Listing (autosave)",
@@ -1048,6 +1591,17 @@
             },
             "description": "Public. Filterable attributes, brands with counts, price/year ranges, conditions, divisions/districts with counts."
           }
+        },
+        {
+          "name": "Homepage Data",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/search/home",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. Up to 12 featured listings (ranked by 30-day saves, chats and views, with bonuses for photos, verified sellers and freshness), bike categories with live counts, top 12 brands with counts, vehicle types with counts, and site numbers (live listings, verified sellers, districts, sold in the last 30 days). Cached in Redis for HOME_CACHE_SECONDS (default 300)."
+          }
         }
       ]
     },
@@ -1155,7 +1709,21 @@
               "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"rating\": 5,\n  \"comment\": \"Honest seller, bike exactly as described.\"\n}"
             },
             "description": "Signed in, verified email or phone, after viewing or saving the listing. One per listing."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('reviewId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Reviews I Gave",
@@ -1256,7 +1824,21 @@
               "raw": "{\n  \"targetType\": \"LISTING\",\n  \"targetId\": \"{{listingId}}\",\n  \"reason\": \"WRONG_INFO\",\n  \"details\": \"Mileage looks wrong\"\n}"
             },
             "description": "Signed in. targetType: LISTING | USER | REVIEW | MESSAGE (participants only, never your own or a system message). reason: SCAM | FAKE_LISTING | WRONG_INFO | DUPLICATE | ALREADY_SOLD | OFFENSIVE | HARASSMENT | SPAM | OTHER. One open report per target; 10 per hour."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('reportId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Report Message",
@@ -1368,7 +1950,21 @@
               ]
             },
             "description": "Signed in. multipart: `documents` files plus `data` JSON. `documentKinds[i]` describes file i. ID needs NID_FRONT, NID_BACK and SELFIE (photos). Only the last 4 NID digits are stored. Files are private on Cloudinary."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('verificationId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Submit Dealer Verification",
@@ -1402,7 +1998,21 @@
               ]
             },
             "description": "Dealer role. TRADE_LICENSE required (photo or PDF); TIN_CERTIFICATE optional (photo or PDF); up to 4 SHOWROOM_PHOTO."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('verificationId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Verification Queue",
@@ -1460,7 +2070,21 @@
               "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"quickReplyKey\": \"IS_AVAILABLE\",\n  \"clientId\": \"{{$guid}}\"\n}"
             },
             "description": "Chat roles. One thread per buyer per listing: 201 when created, 200 when the existing thread is reused (the message is added to it). Needs `body` or a buyer `quickReplyKey`. New threads only for APPROVED listings, never your own, never when either side has blocked the other."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('conversationId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "My Conversations",
@@ -1590,7 +2214,21 @@
               "raw": "{\n  \"text\": \"I can deliver within Dhaka.\"\n}"
             },
             "description": "Signed in. Up to 10, max 300 characters, no duplicates."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('quickReplyId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Update Quick Reply",

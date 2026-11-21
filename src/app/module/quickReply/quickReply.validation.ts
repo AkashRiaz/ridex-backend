@@ -16,7 +16,12 @@ export const UpdateQuickReplyZodSchema = z
       .min(1, "Reply text is required")
       .max(300, "A quick reply can be at most 300 characters")
       .optional(),
-    sortOrder: z.coerce.number().int("Order must be a whole number").min(0).max(100).optional(),
+    sortOrder: z.coerce
+      .number()
+      .int("Order must be a whole number")
+      .min(0)
+      .max(100)
+      .optional(),
   })
   .refine((data) => data.text !== undefined || data.sortOrder !== undefined, {
     message: "Nothing to update",

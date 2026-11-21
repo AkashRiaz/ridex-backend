@@ -5,7 +5,10 @@ import { validateSpecs } from "../../helper/buildDynamicSpecSchema";
 import { generateSlug } from "../../helper/generateSlug";
 import { isValidLocation } from "../../helper/bdLocations";
 import { AppError } from "../../utils/AppError";
-import { IVehicleAttribute, TSpecs } from "../vehicleType/vehicleType.interface";
+import {
+  IVehicleAttribute,
+  TSpecs,
+} from "../vehicleType/vehicleType.interface";
 import { IUpdateListingPayload } from "./listing.interface";
 import { LISTING_LIMITS } from "./listing.validation";
 
@@ -53,7 +56,10 @@ export const EDITABLE_STATUSES: ListingStatus[] = [
 ];
 
 // public visitors only see these
-export const PUBLIC_STATUSES: ListingStatus[] = [ListingStatus.APPROVED, ListingStatus.SOLD];
+export const PUBLIC_STATUSES: ListingStatus[] = [
+  ListingStatus.APPROVED,
+  ListingStatus.SOLD,
+];
 
 // ============================================
 // Edit rules for approved listings
@@ -87,20 +93,33 @@ export const isMajorEdit = (
   payload: IUpdateListingPayload,
 ) =>
   MAJOR_EDIT_FIELDS.some(
-    (field) => payload[field] !== undefined && !isSameValue(current[field], payload[field]),
+    (field) =>
+      payload[field] !== undefined &&
+      !isSameValue(current[field], payload[field]),
   );
 
 // ============================================
 // Ownership & staff
 // ============================================
 
-export const STAFF_ROLES: Role[] = [Role.SUPER_ADMIN, Role.ADMIN, Role.MODERATOR];
+export const STAFF_ROLES: Role[] = [
+  Role.SUPER_ADMIN,
+  Role.ADMIN,
+  Role.MODERATOR,
+];
 
-export const isStaff = (role?: Role | null) => Boolean(role && STAFF_ROLES.includes(role));
+export const isStaff = (role?: Role | null) =>
+  Boolean(role && STAFF_ROLES.includes(role));
 
-export const assertListingOwner = (listing: { sellerId: string }, userId: string) => {
+export const assertListingOwner = (
+  listing: { sellerId: string },
+  userId: string,
+) => {
   if (listing.sellerId !== userId) {
-    throw new AppError(httpStatus.FORBIDDEN, "You can only manage your own listings");
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You can only manage your own listings",
+    );
   }
 };
 
@@ -108,18 +127,24 @@ export const assertListingOwner = (listing: { sellerId: string }, userId: string
 // Slug & search text
 // ============================================
 
-export const generateListingSlug = (parts: (string | number | null | undefined)[]) => {
+export const generateListingSlug = (
+  parts: (string | number | null | undefined)[],
+) => {
   const base = generateSlug(parts.filter(Boolean).join(" ")).slice(0, 70);
   const suffix = crypto.randomBytes(3).toString("hex").slice(0, 4);
 
   return `${base}-${suffix}`;
 };
 
-export const formatSpecValue = (attribute: IVehicleAttribute, value: unknown): string | null => {
+export const formatSpecValue = (
+  attribute: IVehicleAttribute,
+  value: unknown,
+): string | null => {
   if (value === undefined || value === null || value === "") return null;
 
   const optionLabel = (optionValue: string) =>
-    attribute.options?.find((option) => option.value === optionValue)?.label ?? optionValue;
+    attribute.options?.find((option) => option.value === optionValue)?.label ??
+    optionValue;
 
   switch (attribute.type) {
     case "NUMBER":
@@ -155,7 +180,10 @@ export const buildSearchText = (input: {
   specs: TSpecs;
 }) => {
   const specText = input.attributes
-    .filter((attribute) => attribute.type === "SELECT" || attribute.type === "MULTI_SELECT")
+    .filter(
+      (attribute) =>
+        attribute.type === "SELECT" || attribute.type === "MULTI_SELECT",
+    )
     .map((attribute) => formatSpecValue(attribute, input.specs[attribute.key]))
     .filter(Boolean);
 
@@ -186,7 +214,10 @@ export const getCardSpecs = (attributes: IVehicleAttribute[], specs: TSpecs) =>
       label: attribute.label,
       value: formatSpecValue(attribute, specs[attribute.key]),
     }))
-    .filter((spec): spec is { key: string; label: string; value: string } => spec.value !== null);
+    .filter(
+      (spec): spec is { key: string; label: string; value: string } =>
+        spec.value !== null,
+    );
 
 // ============================================
 // Submit checklist
@@ -215,7 +246,9 @@ export const getSubmitProblems = (
   const title = listing.title.trim();
 
   if (title.length < LISTING_LIMITS.titleMin) {
-    problems.push(`Title must be at least ${LISTING_LIMITS.titleMin} characters`);
+    problems.push(
+      `Title must be at least ${LISTING_LIMITS.titleMin} characters`,
+    );
   }
 
   if (Number(listing.price) < LISTING_LIMITS.priceMin) {

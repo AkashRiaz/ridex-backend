@@ -78,16 +78,20 @@ describe("queryBuilder", () => {
 
   it("only sorts by allowed fields", () => {
     expect(
-      queryBuilder.buildSort({ sortBy: "password", sortOrder: "asc" }, ["price"]),
+      queryBuilder.buildSort({ sortBy: "password", sortOrder: "asc" }, [
+        "price",
+      ]),
     ).toEqual({ createdAt: "asc" });
   });
 
   it("builds nested insensitive search", () => {
-    expect(queryBuilder.buildSearch("yamaha", ["title", "brand.name"])).toEqual({
-      OR: [
-        { title: { contains: "yamaha", mode: "insensitive" } },
-        { brand: { name: { contains: "yamaha", mode: "insensitive" } } },
-      ],
-    });
+    expect(queryBuilder.buildSearch("yamaha", ["title", "brand.name"])).toEqual(
+      {
+        OR: [
+          { title: { contains: "yamaha", mode: "insensitive" } },
+          { brand: { name: { contains: "yamaha", mode: "insensitive" } } },
+        ],
+      },
+    );
   });
 });

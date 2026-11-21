@@ -56,15 +56,28 @@ describe("isMajorEdit (approved listings)", () => {
 
   it("price / description / video / color edits stay live", () => {
     expect(isMajorEdit(current, { price: 450000 })).toBe(false);
-    expect(isMajorEdit(current, { description: "New tyres", videoUrl: null, color: "Red" })).toBe(false);
+    expect(
+      isMajorEdit(current, {
+        description: "New tyres",
+        videoUrl: null,
+        color: "Red",
+      }),
+    ).toBe(false);
   });
 
   it("sending the same values is not an edit", () => {
-    expect(isMajorEdit(current, { title: "Yamaha R15 V4 2023", specs: { engineCapacity: 155 } })).toBe(false);
+    expect(
+      isMajorEdit(current, {
+        title: "Yamaha R15 V4 2023",
+        specs: { engineCapacity: 155 },
+      }),
+    ).toBe(false);
   });
 
   it("title, mileage, specs and location changes need review", () => {
-    expect(isMajorEdit(current, { title: "Yamaha R15 V4 2023 — like new" })).toBe(true);
+    expect(
+      isMajorEdit(current, { title: "Yamaha R15 V4 2023 — like new" }),
+    ).toBe(true);
     expect(isMajorEdit(current, { mileage: 100 })).toBe(true);
     expect(isMajorEdit(current, { specs: { engineCapacity: 150 } })).toBe(true);
     expect(isMajorEdit(current, { district: "Gazipur" })).toBe(true);
@@ -134,7 +147,11 @@ describe("slug, search text and card specs", () => {
       district: "Dhaka",
       area: "Mirpur",
       attributes,
-      specs: { abs: "dual-channel", bikeCategory: "sports", features: ["bluetooth"] },
+      specs: {
+        abs: "dual-channel",
+        bikeCategory: "sports",
+        features: ["bluetooth"],
+      },
     });
 
     expect(text).toContain("Mirpur");
@@ -145,7 +162,12 @@ describe("slug, search text and card specs", () => {
 
   it("card specs are the show-in-card attributes, formatted", () => {
     expect(
-      getCardSpecs(attributes, { engineCapacity: 155, bikeCategory: "sports", fuelEconomy: 45, abs: "dual-channel" }),
+      getCardSpecs(attributes, {
+        engineCapacity: 155,
+        bikeCategory: "sports",
+        fuelEconomy: 45,
+        abs: "dual-channel",
+      }),
     ).toEqual([
       { key: "engineCapacity", label: "Engine capacity", value: "155 cc" },
       { key: "bikeCategory", label: "Category", value: "Sports" },

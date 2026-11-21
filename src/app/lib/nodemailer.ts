@@ -8,4 +8,6 @@ export const transporter = nodemailer.createTransport({
   },
 });
 
-export const isSmtpConfigured = Boolean(config.smtp_user && config.smtp_password);
+export const isSmtpConfigured = Boolean(
+  config.smtp_user && config.smtp_password,
+);

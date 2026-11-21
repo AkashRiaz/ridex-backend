@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ListingStatus, ReportTargetType, Role } from "../src/generated/prisma/enums";
+import {
+  ListingStatus,
+  ReportTargetType,
+  Role,
+} from "../src/generated/prisma/enums";
 import {
   assertActionAllowed,
   sortByPriority,
@@ -7,10 +11,20 @@ import {
   targetIdOf,
   targetKey,
 } from "../src/app/module/report/report.utils";
-import { CreateReportZodSchema, UpdateReportZodSchema } from "../src/app/module/report/report.validation";
-import { evaluateReviewEligibility, isWithinEditWindow } from "../src/app/module/review/review.utils";
+import {
+  CreateReportZodSchema,
+  UpdateReportZodSchema,
+} from "../src/app/module/report/report.validation";
+import {
+  evaluateReviewEligibility,
+  isWithinEditWindow,
+} from "../src/app/module/review/review.utils";
 import { ReviewVisibilityZodSchema } from "../src/app/module/review/review.validation";
-import { getDocumentProblems, isPurgeDue, maskNid } from "../src/app/module/verification/verification.utils";
+import {
+  getDocumentProblems,
+  isPurgeDue,
+  maskNid,
+} from "../src/app/module/verification/verification.utils";
 import { SubmitVerificationZodSchema } from "../src/app/module/verification/verification.validation";
 
 const image = { mimetype: "image/jpeg" };
@@ -22,21 +36,48 @@ const pdf = { mimetype: "application/pdf" };
 
 describe("review eligibility", () => {
   const reviewer = { id: "buyer", emailVerified: true, phoneVerified: false };
-  const listing = { id: "l1", sellerId: "seller", status: ListingStatus.APPROVED, isDeleted: false };
-  const base = { reviewer, listing, hasInteraction: true, alreadyReviewed: false };
+  const listing = {
+    id: "l1",
+    sellerId: "seller",
+    status: ListingStatus.APPROVED,
+    isDeleted: false,
+  };
+  const base = {
+    reviewer,
+    listing,
+    hasInteraction: true,
+    alreadyReviewed: false,
+  };
 
   it("allows a verified buyer who interacted with the listing", () => {
     expect(evaluateReviewEligibility(base)).toEqual({ allowed: true });
-    expect(evaluateReviewEligibility({ ...base, listing: { ...listing, status: ListingStatus.SOLD } })).toEqual({
+    expect(
+      evaluateReviewEligibility({
+        ...base,
+        listing: { ...listing, status: ListingStatus.SOLD },
+      }),
+    ).toEqual({
       allowed: true,
     });
   });
 
   it.each([
     ["own listing", { reviewer: { ...reviewer, id: "seller" } }, "OWN_LISTING"],
-    ["draft listing", { listing: { ...listing, status: ListingStatus.DRAFT } }, "LISTING_UNAVAILABLE"],
-    ["deleted listing", { listing: { ...listing, isDeleted: true } }, "LISTING_UNAVAILABLE"],
-    ["unverified reviewer", { reviewer: { ...reviewer, emailVerified: false } }, "UNVERIFIED"],
+    [
+      "draft listing",
+      { listing: { ...listing, status: ListingStatus.DRAFT } },
+      "LISTING_UNAVAILABLE",
+    ],
+    [
+      "deleted listing",
+      { listing: { ...listing, isDeleted: true } },
+      "LISTING_UNAVAILABLE",
+    ],
+    [
+      "unverified reviewer",
+      { reviewer: { ...reviewer, emailVerified: false } },
+      "UNVERIFIED",
+    ],
     ["second review", { alreadyReviewed: true }, "ALREADY_REVIEWED"],
     ["no interaction", { hasInteraction: false }, "NO_INTERACTION"],
   ])("blocks: %s", (_, override, code) => {
@@ -47,14 +88,25 @@ describe("review eligibility", () => {
 
   it("edit window is 30 days", () => {
     const now = new Date("2026-06-30T00:00:00Z");
-    expect(isWithinEditWindow(new Date("2026-06-01T00:00:00Z"), now)).toBe(true);
-    expect(isWithinEditWindow(new Date("2026-05-30T00:00:00Z"), now)).toBe(false);
+    expect(isWithinEditWindow(new Date("2026-06-01T00:00:00Z"), now)).toBe(
+      true,
+    );
+    expect(isWithinEditWindow(new Date("2026-05-30T00:00:00Z"), now)).toBe(
+      false,
+    );
   });
 
   it("hiding a review needs a reason", () => {
-    expect(ReviewVisibilityZodSchema.safeParse({ isHidden: true }).success).toBe(false);
-    expect(ReviewVisibilityZodSchema.safeParse({ isHidden: true, reason: "Abusive" }).success).toBe(true);
-    expect(ReviewVisibilityZodSchema.safeParse({ isHidden: false }).success).toBe(true);
+    expect(
+      ReviewVisibilityZodSchema.safeParse({ isHidden: true }).success,
+    ).toBe(false);
+    expect(
+      ReviewVisibilityZodSchema.safeParse({ isHidden: true, reason: "Abusive" })
+        .success,
+    ).toBe(true);
+    expect(
+      ReviewVisibilityZodSchema.safeParse({ isHidden: false }).success,
+    ).toBe(true);
   });
 });
 
@@ -64,19 +116,41 @@ describe("review eligibility", () => {
 
 describe("report targets", () => {
   it("maps target types to typed columns and back", () => {
-    expect(targetColumns(ReportTargetType.LISTING, "x")).toEqual({ listingId: "x" });
-    expect(targetColumns(ReportTargetType.USER, "x")).toEqual({ reportedUserId: "x" });
-    expect(targetColumns(ReportTargetType.REVIEW, "x")).toEqual({ reviewId: "x" });
+    expect(targetColumns(ReportTargetType.LISTING, "x")).toEqual({
+      listingId: "x",
+    });
+    expect(targetColumns(ReportTargetType.USER, "x")).toEqual({
+      reportedUserId: "x",
+    });
+    expect(targetColumns(ReportTargetType.REVIEW, "x")).toEqual({
+      reviewId: "x",
+    });
     expect(targetIdOf({ reviewId: "r1" })).toBe("r1");
-    expect(targetKey({ targetType: ReportTargetType.USER, reportedUserId: "u1" })).toBe("USER:u1");
+    expect(
+      targetKey({ targetType: ReportTargetType.USER, reportedUserId: "u1" }),
+    ).toBe("USER:u1");
   });
 
   it("only allows actions that fit the target, and only admins block users", () => {
-    expect(() => assertActionAllowed("TAKE_DOWN_LISTING", ReportTargetType.LISTING, Role.MODERATOR)).not.toThrow();
-    expect(() => assertActionAllowed("HIDE_REVIEW", ReportTargetType.LISTING, Role.ADMIN)).toThrow(/does not apply/);
-    expect(() => assertActionAllowed("BLOCK_USER", ReportTargetType.USER, Role.MODERATOR)).toThrow(/Only admins/);
-    expect(() => assertActionAllowed("BLOCK_USER", ReportTargetType.LISTING, Role.ADMIN)).not.toThrow();
-    expect(() => assertActionAllowed("NONE", ReportTargetType.REVIEW, Role.MODERATOR)).not.toThrow();
+    expect(() =>
+      assertActionAllowed(
+        "TAKE_DOWN_LISTING",
+        ReportTargetType.LISTING,
+        Role.MODERATOR,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertActionAllowed("HIDE_REVIEW", ReportTargetType.LISTING, Role.ADMIN),
+    ).toThrow(/does not apply/);
+    expect(() =>
+      assertActionAllowed("BLOCK_USER", ReportTargetType.USER, Role.MODERATOR),
+    ).toThrow(/Only admins/);
+    expect(() =>
+      assertActionAllowed("BLOCK_USER", ReportTargetType.LISTING, Role.ADMIN),
+    ).not.toThrow();
+    expect(() =>
+      assertActionAllowed("NONE", ReportTargetType.REVIEW, Role.MODERATOR),
+    ).not.toThrow();
   });
 
   it("puts the most-reported targets first, oldest first within a target count", () => {
@@ -100,13 +174,35 @@ describe("report targets", () => {
 
   it("validates report payloads", () => {
     const uuid = "3f2c1a8e-9b4d-4c6e-8a1f-2b3c4d5e6f70";
-    expect(CreateReportZodSchema.safeParse({ targetType: "LISTING", targetId: uuid, reason: "SCAM" }).success).toBe(true);
-    expect(CreateReportZodSchema.safeParse({ targetType: "POST", targetId: uuid, reason: "SCAM" }).success).toBe(false);
-    expect(UpdateReportZodSchema.safeParse({ status: "RESOLVED" }).success).toBe(false);
-    expect(UpdateReportZodSchema.safeParse({ status: "IN_REVIEW", action: "BLOCK_USER" }).success).toBe(false);
     expect(
-      UpdateReportZodSchema.safeParse({ status: "RESOLVED", resolutionNote: "Scam confirmed", action: "TAKE_DOWN_LISTING" })
-        .success,
+      CreateReportZodSchema.safeParse({
+        targetType: "LISTING",
+        targetId: uuid,
+        reason: "SCAM",
+      }).success,
+    ).toBe(true);
+    expect(
+      CreateReportZodSchema.safeParse({
+        targetType: "POST",
+        targetId: uuid,
+        reason: "SCAM",
+      }).success,
+    ).toBe(false);
+    expect(
+      UpdateReportZodSchema.safeParse({ status: "RESOLVED" }).success,
+    ).toBe(false);
+    expect(
+      UpdateReportZodSchema.safeParse({
+        status: "IN_REVIEW",
+        action: "BLOCK_USER",
+      }).success,
+    ).toBe(false);
+    expect(
+      UpdateReportZodSchema.safeParse({
+        status: "RESOLVED",
+        resolutionNote: "Scam confirmed",
+        action: "TAKE_DOWN_LISTING",
+      }).success,
     ).toBe(true);
   });
 });
@@ -117,31 +213,59 @@ describe("report targets", () => {
 
 describe("verification documents", () => {
   it("accepts a complete ID set", () => {
-    expect(getDocumentProblems("ID", ["NID_FRONT", "NID_BACK", "SELFIE"], [image, image, image])).toEqual([]);
+    expect(
+      getDocumentProblems(
+        "ID",
+        ["NID_FRONT", "NID_BACK", "SELFIE"],
+        [image, image, image],
+      ),
+    ).toEqual([]);
   });
 
   it("reports missing, foreign and duplicate documents", () => {
-    const problems = getDocumentProblems("ID", ["NID_FRONT", "NID_FRONT", "TRADE_LICENSE"], [image, image, image]);
+    const problems = getDocumentProblems(
+      "ID",
+      ["NID_FRONT", "NID_FRONT", "TRADE_LICENSE"],
+      [image, image, image],
+    );
 
     expect(problems.join(" | ")).toMatch(/NID back is required/);
     expect(problems.join(" | ")).toMatch(/Selfie is required/);
-    expect(problems.join(" | ")).toMatch(/Trade license is not used for id verification/);
+    expect(problems.join(" | ")).toMatch(
+      /Trade license is not used for id verification/,
+    );
     expect(problems.join(" | ")).toMatch(/At most 1 × NID front/);
   });
 
   it("dealer: PDFs only for licenses, up to 4 showroom photos", () => {
     expect(
-      getDocumentProblems("DEALER", ["TRADE_LICENSE", "TIN_CERTIFICATE", "SHOWROOM_PHOTO"], [pdf, pdf, image]),
+      getDocumentProblems(
+        "DEALER",
+        ["TRADE_LICENSE", "TIN_CERTIFICATE", "SHOWROOM_PHOTO"],
+        [pdf, pdf, image],
+      ),
     ).toEqual([]);
-    expect(getDocumentProblems("DEALER", ["TRADE_LICENSE", "SHOWROOM_PHOTO"], [pdf, pdf]).join()).toMatch(
-      /Showroom photo must be a photo/,
-    );
     expect(
-      getDocumentProblems("DEALER", ["TRADE_LICENSE", ...Array(5).fill("SHOWROOM_PHOTO")], Array(6).fill(image)).join(),
+      getDocumentProblems(
+        "DEALER",
+        ["TRADE_LICENSE", "SHOWROOM_PHOTO"],
+        [pdf, pdf],
+      ).join(),
+    ).toMatch(/Showroom photo must be a photo/);
+    expect(
+      getDocumentProblems(
+        "DEALER",
+        ["TRADE_LICENSE", ...Array(5).fill("SHOWROOM_PHOTO")],
+        Array(6).fill(image),
+      ).join(),
     ).toMatch(/At most 4/);
-    expect(getDocumentProblems("ID", ["NID_FRONT", "NID_BACK", "SELFIE"], [pdf, image, image]).join()).toMatch(
-      /NID front must be a photo/,
-    );
+    expect(
+      getDocumentProblems(
+        "ID",
+        ["NID_FRONT", "NID_BACK", "SELFIE"],
+        [pdf, image, image],
+      ).join(),
+    ).toMatch(/NID front must be a photo/);
   });
 
   it("needs one document type per file", () => {
@@ -189,6 +313,8 @@ describe("verification documents", () => {
         documentKinds: ["TRADE_LICENSE"],
       }).success,
     ).toBe(true);
-    expect(SubmitVerificationZodSchema.safeParse({ type: "PASSPORT" }).success).toBe(false);
+    expect(
+      SubmitVerificationZodSchema.safeParse({ type: "PASSPORT" }).success,
+    ).toBe(false);
   });
 });

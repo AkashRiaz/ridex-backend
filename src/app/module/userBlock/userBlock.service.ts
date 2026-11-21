@@ -9,7 +9,10 @@ import { IBlockState } from "./userBlock.interface";
 /*
  * Both directions between two users, in one query.
  */
-const getBlockState = async (userId: string, otherUserId: string): Promise<IBlockState> => {
+const getBlockState = async (
+  userId: string,
+  otherUserId: string,
+): Promise<IBlockState> => {
   const blocks = await prisma.userBlock.findMany({
     where: {
       OR: [
@@ -26,9 +29,19 @@ const getBlockState = async (userId: string, otherUserId: string): Promise<IBloc
   };
 };
 
-const notifyBlockChange = (blockerId: string, blockedId: string, blocked: boolean) => {
-  emitToUser(blockerId, "block:changed", { userId: blockedId, blockedByMe: blocked });
-  emitToUser(blockedId, "block:changed", { userId: blockerId, blockedMe: blocked });
+const notifyBlockChange = (
+  blockerId: string,
+  blockedId: string,
+  blocked: boolean,
+) => {
+  emitToUser(blockerId, "block:changed", {
+    userId: blockedId,
+    blockedByMe: blocked,
+  });
+  emitToUser(blockedId, "block:changed", {
+    userId: blockerId,
+    blockedMe: blocked,
+  });
 };
 
 const blockUser = async (userId: string, targetUserId: string) => {
@@ -47,7 +60,9 @@ const blockUser = async (userId: string, targetUserId: string) => {
 
   // idempotent: blocking twice keeps the first block
   const block = await prisma.userBlock.upsert({
-    where: { blockerId_blockedId: { blockerId: userId, blockedId: targetUserId } },
+    where: {
+      blockerId_blockedId: { blockerId: userId, blockedId: targetUserId },
+    },
     create: { blockerId: userId, blockedId: targetUserId },
     update: {},
   });
@@ -85,7 +100,15 @@ const getMyBlockedUsers = async (userId: string, query: IQuery) => {
       select: {
         id: true,
         createdAt: true,
-        blocked: { select: { id: true, name: true, imageUrl: true, role: true, isDeleted: true } },
+        blocked: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            role: true,
+            isDeleted: true,
+          },
+        },
       },
     }),
     prisma.userBlock.count({ where }),

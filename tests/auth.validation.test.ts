@@ -30,12 +30,15 @@ describe("PasswordZodSchema", () => {
     expect(PasswordZodSchema.safeParse("Ride@2026x").success).toBe(true);
   });
 
-  it.each(["short1!", "alllowercase1!", "ALLUPPER1!", "NoNumber!!", "NoSpecial12"])(
-    "rejects %s",
-    (password) => {
-      expect(PasswordZodSchema.safeParse(password).success).toBe(false);
-    },
-  );
+  it.each([
+    "short1!",
+    "alllowercase1!",
+    "ALLUPPER1!",
+    "NoNumber!!",
+    "NoSpecial12",
+  ])("rejects %s", (password) => {
+    expect(PasswordZodSchema.safeParse(password).success).toBe(false);
+  });
 });
 
 describe("RegisterZodSchema", () => {
@@ -57,7 +60,13 @@ describe("RegisterZodSchema", () => {
   });
 
   it("does not allow self-registering staff roles", () => {
-    for (const role of ["ADMIN", "SUPER_ADMIN", "MODERATOR", "INSPECTOR", "DEALER_STAFF"]) {
+    for (const role of [
+      "ADMIN",
+      "SUPER_ADMIN",
+      "MODERATOR",
+      "INSPECTOR",
+      "DEALER_STAFF",
+    ]) {
       expect(
         RegisterZodSchema.safeParse({ ...base, email: "a@b.co", role }).success,
       ).toBe(false);
@@ -78,15 +87,15 @@ describe("ChangePasswordZodSchema", () => {
 
 describe("UpdateUserStatusZodSchema", () => {
   it("requires a reason when blocking", () => {
-    expect(UpdateUserStatusZodSchema.safeParse({ status: "BLOCKED" }).success).toBe(
-      false,
-    );
+    expect(
+      UpdateUserStatusZodSchema.safeParse({ status: "BLOCKED" }).success,
+    ).toBe(false);
     expect(
       UpdateUserStatusZodSchema.safeParse({ status: "BLOCKED", reason: "Spam" })
         .success,
     ).toBe(true);
-    expect(UpdateUserStatusZodSchema.safeParse({ status: "ACTIVE" }).success).toBe(
-      true,
-    );
+    expect(
+      UpdateUserStatusZodSchema.safeParse({ status: "ACTIVE" }).success,
+    ).toBe(true);
   });
 });

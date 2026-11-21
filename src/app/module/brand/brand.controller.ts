@@ -12,7 +12,11 @@ const getLogoFile = (req: Request) => {
 };
 
 const createBrand = catchAsync(async (req: Request, res: Response) => {
-  const result = await BrandService.createBrand(req.body, getLogoFile(req), getAuditActor(req));
+  const result = await BrandService.createBrand(
+    req.body,
+    getLogoFile(req),
+    getAuditActor(req),
+  );
 
   sendResponse(res, {
     success: true,
@@ -68,7 +72,10 @@ const updateBrand = catchAsync(async (req: Request, res: Response) => {
 const deleteBrand = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const result = await BrandService.deleteBrand(id as string, getAuditActor(req));
+  const result = await BrandService.deleteBrand(
+    id as string,
+    getAuditActor(req),
+  );
 
   sendResponse(res, {
     success: true,

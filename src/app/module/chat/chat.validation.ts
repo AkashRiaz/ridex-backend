@@ -1,10 +1,18 @@
 import { z } from "zod";
-import { MAX_CHAT_IMAGES, MAX_MESSAGE_LENGTH, MESSAGES_DEFAULT_LIMIT, MESSAGES_MAX_LIMIT } from "./chat.utils";
+import {
+  MAX_CHAT_IMAGES,
+  MAX_MESSAGE_LENGTH,
+  MESSAGES_DEFAULT_LIMIT,
+  MESSAGES_MAX_LIMIT,
+} from "./chat.utils";
 
 const messageBody = z
   .string()
   .trim()
-  .max(MAX_MESSAGE_LENGTH, `A message can be at most ${MAX_MESSAGE_LENGTH} characters`)
+  .max(
+    MAX_MESSAGE_LENGTH,
+    `A message can be at most ${MAX_MESSAGE_LENGTH} characters`,
+  )
   .optional();
 
 const quickReplyKey = z
@@ -26,7 +34,10 @@ export const StartConversationZodSchema = z
     quickReplyKey,
     clientId,
   })
-  .refine(hasContent, { message: "Write a message or pick a quick reply", path: ["body"] });
+  .refine(hasContent, {
+    message: "Write a message or pick a quick reply",
+    path: ["body"],
+  });
 
 export const SendMessageZodSchema = z
   .object({
@@ -37,7 +48,10 @@ export const SendMessageZodSchema = z
   .refine(hasContent, { message: "Message cannot be empty", path: ["body"] });
 
 export const SendImagesZodSchema = z.object({
-  clientIds: z.array(z.uuid("Invalid client message ID")).max(MAX_CHAT_IMAGES).optional(),
+  clientIds: z
+    .array(z.uuid("Invalid client message ID"))
+    .max(MAX_CHAT_IMAGES)
+    .optional(),
 });
 
 export const ArchiveConversationZodSchema = z.object({
@@ -50,7 +64,12 @@ export const ConversationParamZodSchema = z.object({
 
 export const MessagesQueryZodSchema = z.object({
   before: z.uuid("Invalid cursor").optional(),
-  limit: z.coerce.number().int().min(1).max(MESSAGES_MAX_LIMIT).default(MESSAGES_DEFAULT_LIMIT),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(MESSAGES_MAX_LIMIT)
+    .default(MESSAGES_DEFAULT_LIMIT),
 });
 
 // socket payloads carry the conversation id in the body

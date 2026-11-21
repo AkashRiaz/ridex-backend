@@ -12,7 +12,12 @@ import {
 
 const router = Router();
 
-router.post("/", auth(), validateRequest(CreateReviewZodSchema), ReviewController.createReview);
+router.post(
+  "/",
+  auth(),
+  validateRequest(CreateReviewZodSchema),
+  ReviewController.createReview,
+);
 
 router.get("/", ReviewController.getReviews);
 
@@ -20,13 +25,27 @@ router.get("/given", auth(), ReviewController.getGivenReviews);
 
 router.get("/received", auth(), ReviewController.getReceivedReviews);
 
-router.get("/eligibility/:listingId", auth(), ReviewController.getReviewEligibility);
+router.get(
+  "/eligibility/:listingId",
+  auth(),
+  ReviewController.getReviewEligibility,
+);
 
-router.patch("/:id", auth(), validateRequest(UpdateReviewZodSchema), ReviewController.updateReview);
+router.patch(
+  "/:id",
+  auth(),
+  validateRequest(UpdateReviewZodSchema),
+  ReviewController.updateReview,
+);
 
 router.delete("/:id", auth(), ReviewController.deleteReview);
 
-router.post("/:id/reply", auth(), validateRequest(ReplyToReviewZodSchema), ReviewController.replyToReview);
+router.post(
+  "/:id/reply",
+  auth(),
+  validateRequest(ReplyToReviewZodSchema),
+  ReviewController.replyToReview,
+);
 
 router.patch(
   "/:id/visibility",

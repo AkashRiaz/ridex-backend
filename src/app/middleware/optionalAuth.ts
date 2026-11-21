@@ -15,8 +15,12 @@ export const optionalAuth = () =>
   catchAsync(async (req: Request, _res: Response, next: NextFunction) => {
     const authorization = req.headers.authorization?.trim();
     const token =
-      (authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : undefined) ||
-      (typeof req.cookies?.accessToken === "string" ? req.cookies.accessToken.trim() : undefined);
+      (authorization?.startsWith("Bearer ")
+        ? authorization.slice(7).trim()
+        : undefined) ||
+      (typeof req.cookies?.accessToken === "string"
+        ? req.cookies.accessToken.trim()
+        : undefined);
 
     if (!token) return next();
 

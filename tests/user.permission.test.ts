@@ -35,7 +35,9 @@ describe("assertCanManageUser", () => {
 
   it("admins can manage marketplace users", () => {
     for (const role of [Role.SELLER, Role.BUYER, Role.DEALER, Role.MODERATOR]) {
-      expect(() => assertCanManageUser(admin, { id: "u1", role })).not.toThrow();
+      expect(() =>
+        assertCanManageUser(admin, { id: "u1", role }),
+      ).not.toThrow();
     }
   });
 
@@ -62,7 +64,12 @@ describe("canCreateRole", () => {
   });
 
   it("non-manager roles cannot create anyone", () => {
-    for (const actor of [Role.MODERATOR, Role.SELLER, Role.BUYER, Role.DEALER]) {
+    for (const actor of [
+      Role.MODERATOR,
+      Role.SELLER,
+      Role.BUYER,
+      Role.DEALER,
+    ]) {
       expect(canCreateRole(actor, Role.BUYER)).toBe(false);
     }
   });

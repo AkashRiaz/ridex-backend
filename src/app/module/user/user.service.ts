@@ -11,7 +11,10 @@ import { UserWhereInput } from "../../../generated/prisma/models";
 import { config } from "../../config";
 import { generateRandomPassword } from "../../helper/generateRandomPassword";
 import { queryBuilder } from "../../helper/queryBuilder";
-import { sellerSummarySelect, toSellerSummary } from "../../helper/sellerBadges";
+import {
+  sellerSummarySelect,
+  toSellerSummary,
+} from "../../helper/sellerBadges";
 import { IQuery } from "../../interfaces";
 import { prisma } from "../../lib/prisma";
 import { RequestUser } from "../../middleware/checkAuth";
@@ -181,7 +184,9 @@ const becomeSeller = async (userId: string, meta: IRequestMeta) => {
   if (user.role !== Role.BUYER) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      user.role === Role.SELLER ? "You are already a seller" : "Only buyer accounts can switch to selling",
+      user.role === Role.SELLER
+        ? "You are already a seller"
+        : "Only buyer accounts can switch to selling",
     );
   }
 
@@ -243,8 +248,12 @@ const getPublicProfile = async (id: string) => {
       take: 12,
       include: listingCardInclude,
     }),
-    prisma.listing.count({ where: { sellerId: id, isDeleted: false, status: ListingStatus.APPROVED } }),
-    prisma.listing.count({ where: { sellerId: id, isDeleted: false, status: ListingStatus.SOLD } }),
+    prisma.listing.count({
+      where: { sellerId: id, isDeleted: false, status: ListingStatus.APPROVED },
+    }),
+    prisma.listing.count({
+      where: { sellerId: id, isDeleted: false, status: ListingStatus.SOLD },
+    }),
   ]);
 
   return {

@@ -8,6 +8,10 @@ router.get("/", auth(), RecentlyViewedController.getMyRecentlyViewed);
 
 router.delete("/", auth(), RecentlyViewedController.clearRecentlyViewed);
 
-router.delete("/:listingId", auth(), RecentlyViewedController.removeRecentlyViewed);
+router.delete(
+  "/:listingId",
+  auth(),
+  RecentlyViewedController.removeRecentlyViewed,
+);
 
 export const RecentlyViewedRoutes = router;

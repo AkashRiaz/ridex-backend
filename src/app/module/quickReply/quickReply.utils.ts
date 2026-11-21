@@ -10,7 +10,10 @@ export type TBuiltInQuickReply = {
   text: string;
 };
 
-export const BUILT_IN_QUICK_REPLIES: Record<TQuickReplySide, TBuiltInQuickReply[]> = {
+export const BUILT_IN_QUICK_REPLIES: Record<
+  TQuickReplySide,
+  TBuiltInQuickReply[]
+> = {
   buyer: [
     { key: "IS_AVAILABLE", text: "Hi, is this still available?" },
     { key: "BEST_PRICE", text: "What is your best price?" },

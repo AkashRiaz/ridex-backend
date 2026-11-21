@@ -1,9 +1,15 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { JwtPayload, SignOptions } from "jsonwebtoken";
-import { NotificationCategory, NotificationType } from "../../../generated/prisma/enums";
+import {
+  NotificationCategory,
+  NotificationType,
+} from "../../../generated/prisma/enums";
 import { config } from "../../config";
 import { jwtUtils } from "../../utils/jwt";
-import { TNotificationChannel, IResolvedPreference } from "./notification.interface";
+import {
+  TNotificationChannel,
+  IResolvedPreference,
+} from "./notification.interface";
 
 // ============================================
 // Categories
@@ -17,17 +23,40 @@ type TCategoryDefault = {
   lockedEmail: boolean;
 };
 
-export const CATEGORY_DEFAULTS: Record<NotificationCategory, TCategoryDefault> = {
-  // in-app for messages is the chat badge itself; only the email digest is optional
-  MESSAGES: { inApp: true, email: true, lockedInApp: true, lockedEmail: false },
-  LISTINGS: { inApp: true, email: true, lockedInApp: false, lockedEmail: false },
-  PRICE_ALERTS: { inApp: true, email: true, lockedInApp: false, lockedEmail: false },
-  REVIEWS: { inApp: true, email: true, lockedInApp: false, lockedEmail: false },
-  // verification decisions and report outcomes
-  ACCOUNT: { inApp: true, email: true, lockedInApp: true, lockedEmail: true },
-};
+export const CATEGORY_DEFAULTS: Record<NotificationCategory, TCategoryDefault> =
+  {
+    // in-app for messages is the chat badge itself; only the email digest is optional
+    MESSAGES: {
+      inApp: true,
+      email: true,
+      lockedInApp: true,
+      lockedEmail: false,
+    },
+    LISTINGS: {
+      inApp: true,
+      email: true,
+      lockedInApp: false,
+      lockedEmail: false,
+    },
+    PRICE_ALERTS: {
+      inApp: true,
+      email: true,
+      lockedInApp: false,
+      lockedEmail: false,
+    },
+    REVIEWS: {
+      inApp: true,
+      email: true,
+      lockedInApp: false,
+      lockedEmail: false,
+    },
+    // verification decisions and report outcomes
+    ACCOUNT: { inApp: true, email: true, lockedInApp: true, lockedEmail: true },
+  };
 
-export const NOTIFICATION_CATEGORIES = Object.keys(CATEGORY_DEFAULTS) as NotificationCategory[];
+export const NOTIFICATION_CATEGORIES = Object.keys(
+  CATEGORY_DEFAULTS,
+) as NotificationCategory[];
 
 export const TYPE_CATEGORY: Record<NotificationType, NotificationCategory> = {
   UNREAD_MESSAGES: NotificationCategory.MESSAGES,
@@ -48,12 +77,18 @@ export const TYPE_CATEGORY: Record<NotificationType, NotificationCategory> = {
 // Preferences (pure, unit-tested)
 // ============================================
 
-type TPreferenceRow = { category: NotificationCategory; inApp: boolean; email: boolean };
+type TPreferenceRow = {
+  category: NotificationCategory;
+  inApp: boolean;
+  email: boolean;
+};
 
 /*
  * Stored rows over defaults; locked channels always win.
  */
-export const resolvePreferences = (rows: TPreferenceRow[]): IResolvedPreference[] =>
+export const resolvePreferences = (
+  rows: TPreferenceRow[],
+): IResolvedPreference[] =>
   NOTIFICATION_CATEGORIES.map((category) => {
     const defaults = CATEGORY_DEFAULTS[category];
     const row = rows.find((preference) => preference.category === category);
@@ -72,7 +107,9 @@ export const isChannelEnabled = (
   category: NotificationCategory,
   channel: TNotificationChannel,
 ) => {
-  const preference = resolvePreferences(rows).find((resolved) => resolved.category === category);
+  const preference = resolvePreferences(rows).find(
+    (resolved) => resolved.category === category,
+  );
 
   return Boolean(preference?.[channel]);
 };
@@ -80,11 +117,20 @@ export const isChannelEnabled = (
 /*
  * Rejects an attempt to switch off a locked channel instead of silently ignoring it.
  */
-export const findLockedChange = (changes: { category: NotificationCategory; inApp?: boolean; email?: boolean }[]) =>
+export const findLockedChange = (
+  changes: {
+    category: NotificationCategory;
+    inApp?: boolean;
+    email?: boolean;
+  }[],
+) =>
   changes.find(({ category, inApp, email }) => {
     const defaults = CATEGORY_DEFAULTS[category];
 
-    return (defaults.lockedInApp && inApp === false) || (defaults.lockedEmail && email === false);
+    return (
+      (defaults.lockedInApp && inApp === false) ||
+      (defaults.lockedEmail && email === false)
+    );
   }) ?? null;
 
 // ============================================
@@ -95,10 +141,20 @@ const UNSUBSCRIBE_TOKEN_TYPE = "unsubscribe";
 
 // a sub-key of the socket secret, so the two token kinds can never be swapped
 const unsubscribeSecret = () =>
-  crypto.createHmac("sha256", config.jwt_socket_secret).update("email-unsubscribe").digest("hex");
+  crypto
+    .createHmac("sha256", config.jwt_socket_secret)
+    .update("email-unsubscribe")
+    .digest("hex");
 
-export const createUnsubscribeToken = (userId: string, category: NotificationCategory) =>
-  jwtUtils.createToken({ userId, category, typ: UNSUBSCRIBE_TOKEN_TYPE }, unsubscribeSecret(), "180d" as SignOptions);
+export const createUnsubscribeToken = (
+  userId: string,
+  category: NotificationCategory,
+) =>
+  jwtUtils.createToken(
+    { userId, category, typ: UNSUBSCRIBE_TOKEN_TYPE },
+    unsubscribeSecret(),
+    "180d" as SignOptions,
+  );
 
 export const verifyUnsubscribeToken = (token: string) => {
   const verified = jwtUtils.verifyToken(token, unsubscribeSecret());
@@ -115,23 +171,39 @@ export const verifyUnsubscribeToken = (token: string) => {
     return null;
   }
 
-  return { userId: payload.userId, category: payload.category as NotificationCategory };
+  return {
+    userId: payload.userId,
+    category: payload.category as NotificationCategory,
+  };
 };
 
-export const buildUnsubscribeUrl = (userId: string, category: NotificationCategory) =>
+export const buildUnsubscribeUrl = (
+  userId: string,
+  category: NotificationCategory,
+) =>
   CATEGORY_DEFAULTS[category].lockedEmail
     ? null
     : `${config.frontend_url}/unsubscribe?token=${encodeURIComponent(createUnsubscribeToken(userId, category))}`;
 
 // absolute link for emails; in-app links stay relative
 export const toAbsoluteLink = (link?: string | null) =>
-  link ? (link.startsWith("http") ? link : `${config.frontend_url}${link}`) : config.frontend_url;
+  link
+    ? link.startsWith("http")
+      ? link
+      : `${config.frontend_url}${link}`
+    : config.frontend_url;
 
 // ============================================
 // Unread message digest (pure, unit-tested)
 // ============================================
 
-export type TDigestSkipReason = "NO_UNREAD" | "ONLINE" | "NO_EMAIL" | "EMAIL_OFF" | "COOLDOWN" | "INACTIVE";
+export type TDigestSkipReason =
+  | "NO_UNREAD"
+  | "ONLINE"
+  | "NO_EMAIL"
+  | "EMAIL_OFF"
+  | "COOLDOWN"
+  | "INACTIVE";
 
 /*
  * The delayed job re-checks everything when it runs.

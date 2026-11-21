@@ -1,4 +1,8 @@
-import { NotificationCategory, NotificationType, Role } from "../../../generated/prisma/enums";
+import {
+  NotificationCategory,
+  NotificationType,
+  Role,
+} from "../../../generated/prisma/enums";
 
 export type TNotificationChannel = "inApp" | "email";
 

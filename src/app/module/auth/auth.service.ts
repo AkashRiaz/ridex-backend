@@ -144,7 +144,10 @@ const registerUser = async (payload: IRegisterPayload) => {
   };
 };
 
-const verifyEmail = async (payload: IVerifyEmailPayload, meta: IRequestMeta) => {
+const verifyEmail = async (
+  payload: IVerifyEmailPayload,
+  meta: IRequestMeta,
+) => {
   const { email, otp } = payload;
 
   const user = assertUserCanAuthenticate(
@@ -305,7 +308,10 @@ const loginUser = async (payload: ILoginUserPayload, meta: IRequestMeta) => {
   return { user: sanitizeUser(updatedUser), ...tokens };
 };
 
-const googleLogin = async (payload: IGoogleLoginPayload, meta: IRequestMeta) => {
+const googleLogin = async (
+  payload: IGoogleLoginPayload,
+  meta: IRequestMeta,
+) => {
   if (!config.enable_google_login || !config.google_client_id) {
     throw new AppError(httpStatus.NOT_FOUND, "Google login is not enabled");
   }
@@ -490,7 +496,9 @@ const getMe = async (user: RequestUser) => {
 };
 
 const getSocketToken = async (user: RequestUser) => {
-  const isUserExist = await prisma.user.findUnique({ where: { id: user.userId } });
+  const isUserExist = await prisma.user.findUnique({
+    where: { id: user.userId },
+  });
 
   if (!isUserExist) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
@@ -517,7 +525,10 @@ const changePassword = async (
 
   if (user.password) {
     if (!payload.oldPassword) {
-      throw new AppError(httpStatus.BAD_REQUEST, "Current password is required");
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Current password is required",
+      );
     }
 
     const isPasswordMatched = await bcrypt.compare(
@@ -632,7 +643,8 @@ const resetPassword = async (
     await prisma.user.findUnique({ where: identifier }),
   );
 
-  const identifierValue = "email" in identifier ? identifier.email : identifier.phone;
+  const identifierValue =
+    "email" in identifier ? identifier.email : identifier.phone;
 
   await verifyOtp(otpKeys.forgotPassword(identifierValue), payload.otp);
 
