@@ -133,6 +133,8 @@ model User {
 
   testRideBlockedDates TestRideBlockedDate[]
 
+  savedSearches SavedSearch[]
+
   @@index([email])
   @@index([phone])
   @@index([role])

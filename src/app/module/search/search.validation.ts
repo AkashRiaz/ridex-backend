@@ -83,6 +83,8 @@ export const SearchListingsQueryZodSchema = z
     { message: "Min year must be before max year", path: ["minYear"] },
   );
 
+export type TSearchListingsQuery = z.infer<typeof SearchListingsQueryZodSchema>;
+
 export const SearchFiltersQueryZodSchema = z.object({
   vehicleType: z.string().trim().max(80).optional(),
 });

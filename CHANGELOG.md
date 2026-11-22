@@ -1,5 +1,77 @@
 # Changelog
 
+## [0.13.0] — Phase 2 · Part 2b: saved searches and alerts (2026-11-22)
+
+### Added
+- **`savedSearch` module** (`/api/v1/saved-searches`), for buyers, sellers, dealers, dealer staff and inspectors (the roles with a Saved Searches page):
+  - **Endpoints:** `POST /` save the current search · `GET /` my saved searches · `GET /lookup?<search params>` "is this search saved?" · `GET /:id` with its 20 latest matches · `PATCH /:id` rename, frequency, price drops · `PATCH /:id/seen` clear the "new" badge · `DELETE /:id`.
+  - **Query:** the search page's own params (`spec.*` included), canonicalised.
+    - Paging, sorting and unknown keys are dropped. Lists and keys are sorted, the search term is lowercased, and "near me" coordinates are rounded to about 100 m.
+    - The same filters in another order are the same search: `@@unique([userId, queryHash])`, and a second save gets 409.
+    - The query is checked with the search page's own rules. An empty search, invalid specs, or filters that no longer exist get a 400.
+  - **Name:** generated from the first three readable filter chips when it isn't given, e.g. "Yamaha · R15 V4 · Under BDT 500,000".
+  - **List:** every item has `summary` chips, a `searchUrl` to the newest results, `newMatchesCount` (live matches since `lastViewedAt`) and `totalMatchesCount`.
+  - **Limit:** at most `SAVED_SEARCH_MAX_PER_USER` saved searches per user (default 20).
+- **Alerts through the internal event system:**
+  - **Flow:** `listing.approved` and `listing.priceDropped` go to `events/savedSearchHandlers.ts`. They enqueue `match-listing` on the new `saved-search` queue (`jobs/savedSearchAlert.job.ts`), never in the request cycle.
+  - **Candidates:** saved searches with alerts on, the same (or no) vehicle type, an active owner who isn't the seller, and no block either way with the seller.
+  - **Price drops** also skip owners who wishlisted the listing (they already get `WISHLIST_PRICE_DROP`) and searches with price-drop alerts off.
+  - **Matching:** each candidate runs the search page's exact SQL, restricted to that listing.
+  - **NEW_LISTING:** recorded once per search, so a listing approved again after an edit never alerts twice.
+  - **PRICE_DROP:** updated on every new drop, and a retried job doesn't alert again.
+  - **INSTANT** emits `savedSearch.matched`, which becomes an in-app + email notification by preference. It is capped at `SAVED_SEARCH_INSTANT_MAX_PER_DAY` per search per 24h (default 10, Redis counter). Further matches wait for the digest.
+  - **DAILY:** the cron at `SAVED_SEARCH_DIGEST_HOUR` (default 09:00, `TIMEZONE`) emits one `savedSearch.digest` per search with matches not announced yet. It checks each listing is still live and links to the dashboard's saved search page.
+  - **OFF:** no matching.
+- **Notifications:** `SAVED_SEARCH_MATCH` and `SAVED_SEARCH_PRICE_DROP` in the `PRICE_ALERTS` category.
+- **Seed:** two saved searches for the demo buyer, and one with alerts off for buyer2. Matches are found with the real matcher SQL.
+  - "Yamaha · R15 V4 · Under BDT 500,000" (instant) has two new matches and a price drop.
+  - "Bajaj · Pulsar N160 · Dhaka" (daily) has 4 matches waiting for the digest.
+- **Postman:** "Saved Searches" folder (7 requests, `savedSearchId` variable).
+- **Tests:** `tests/savedSearch.rules.test.ts` covers canonical query and hash, filter chips, the generated name, the results link, the stored-query guard and validation.
+- **Env:** `SAVED_SEARCH_MAX_PER_USER`, `SAVED_SEARCH_INSTANT_MAX_PER_DAY`, `SAVED_SEARCH_DIGEST_HOUR`.
+
+### Changed
+- Migration `saved_searches` adds:
+  - `SavedSearch` and `SavedSearchMatch` models.
+  - `SavedSearchAlertFrequency` and `SavedSearchMatchKind` enums.
+  - Two notification types.
+- `SearchService`:
+  - Filter resolution (slugs → ids, spec filters) moved into the exported `resolveSearchFilters()`.
+  - New `listingMatchesFilters()`.
+  - `buildSearchSql` accepts an optional `listingIds`.
+  - `/search/listings` behaves exactly as before.
+
+### Notes
+- Matching runs one indexed query per candidate saved search. That is fine for thousands of saved searches; a reverse index would be needed beyond that.
+
+## [0.12.0] — Phase 2 · Part 2a: price insight and compare (2026-11-22)
+
+### Added
+- **`priceInsight` module** (`/api/v1/price-insights`): `GET /listings/:idOrSlug` rates a listing's price as `GOOD_DEAL`, `FAIR`, `HIGH` or `INSUFFICIENT_DATA`.
+  - **Visibility:** public for live and sold listings. The owner and staff also see unpublished ones, so a seller can check a draft's price.
+  - **Comparables:** same vehicle type and model, and the same condition group (new, or used + reconditioned). Live listings count, and so do listings sold within `PRICE_INSIGHT_SOLD_LOOKBACK_DAYS` (default 180).
+  - **Tiers:** year ±1 and mileage ±50% (5,000 km floor), then year ±2, then year ±3. The first tier with `PRICE_INSIGHT_MIN_SAMPLE` comparables (default 5) is used.
+  - **Outliers:** prices below 0.4× or above 2.5× the raw median are dropped before counting.
+  - **Rating:** `PRICE_INSIGHT_DEAL_PERCENT` (default 10) or more below the median is a good deal; that much above is high.
+  - **Response:** `median`, `p25`, `p75` (rounded to 100), `diffPercent`, `sampleSize`, and a readable `basis` ("Yamaha R15 V4 · 2022–2023 · used") built from the comparables' real year span.
+  - **Without a rating:** `reason` is `NO_MODEL` or `TOO_FEW_COMPARABLES`.
+  - **Cache:** Redis key `price-insight:<listingId>:<price>` for `PRICE_INSIGHT_CACHE_SECONDS` (default 6h, 0 turns it off). A price change never serves a stale rating.
+- **`compare` module** (`/api/v1/compare`): `GET /?ids=a,b,c,d`, public, 1–4 listings.
+  - **Order:** columns come back in the order sent.
+  - **Same vehicle type:** all listings must share one vehicle type, otherwise 400.
+  - **Stale ids:** live and sold listings only. Ids that are gone come back in `missingIds`, because the compare list lives in the browser.
+  - **listings:** card fields plus description, colour and price insight.
+  - **specRows:** one per attribute that has a value, in schema order, with formatted values per column and `isDifferent`.
+  - **highlights:** lowest price, lowest mileage, newest year and best deal (lowest `diffPercent`). Ties are shared, and a row where everyone is equal has no highlight.
+- **Seed:** 14 market listings (used R15 V4 and Pulsar N160, three of them recently sold), so the demo shows every rating. The seller's 2023 R15 is fair, the dealer's 2022 one is a good deal, and the 2023 one at BDT 5,65,000 is high.
+- **Postman:** "Price Insights" and "Compare" folders.
+- **Tests:** `tests/priceInsight.rules.test.ts` (statistics, outliers, tiers, rating bounds) and `tests/compare.rules.test.ts` (query parsing, order, highlights, spec rows).
+- **Env:** `PRICE_INSIGHT_MIN_SAMPLE`, `PRICE_INSIGHT_DEAL_PERCENT`, `PRICE_INSIGHT_SOLD_LOOKBACK_DAYS`, `PRICE_INSIGHT_CACHE_SECONDS`.
+
+### Notes
+- Neither module has a Prisma model or a `.validation.ts` for a body. `priceInsight` has no input to validate; `compare` validates its query in `compare.validation.ts`. The same exception as `dashboard`.
+- Run tests from an uppercase `E:\` path. In a lowercase `e:\` working directory, vitest 5 loads its runner twice, and every suite fails with "Cannot read properties of undefined (reading 'config')".
+
 ## [0.11.0] — Phase 2 · Part 1b: test rides (2026-11-22)
 
 ### Added

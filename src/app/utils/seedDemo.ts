@@ -6,7 +6,7 @@
  *   Phase 1 → seedDemoUsers, seedVehicleTypes, seedBrandsAndModels, seedSampleListings,
  *             seedDemoConversations, seedDemoTrust, seedModerationHistory,
  *             seedVerificationRequests, seedDemoEngagement, seedDemoReviews, seedDemoReports
- *   Phase 2 → seedDemoOffers, seedDemoTestRides, seedPlans, seedCmsPages
+ *   Phase 2 → seedDemoOffers, seedDemoTestRides, seedDemoSavedSearches, seedPlans, seedCmsPages
  *   Phase 3 → seedGroups, seedBadges
  */
 import bcrypt from "bcrypt";
@@ -24,6 +24,8 @@ import {
   ReportStatus,
   ReportTargetType,
   Role,
+  SavedSearchAlertFrequency,
+  SavedSearchMatchKind,
   TestRideStatus,
   UserStatus,
   VerificationStatus,
@@ -36,6 +38,16 @@ import { generateSlug } from "../helper/generateSlug";
 import { prisma } from "../lib/prisma";
 import { syncSearch } from "../module/listing/listing.service";
 import { recalculateSellerRating } from "../module/review/review.utils";
+import {
+  buildSavedSearchName,
+  canonicalizeSearchQuery,
+  describeSearchQuery,
+  hashSearchQuery,
+} from "../module/savedSearch/savedSearch.utils";
+import {
+  listingMatchesFilters,
+  resolveSearchFilters,
+} from "../module/search/search.service";
 import { generateListingSlug } from "../module/listing/listing.utils";
 import {
   offerExpiryDate,
@@ -61,7 +73,11 @@ import {
   BIKE_VEHICLE_TYPE,
 } from "./seedData/bikeCatalog";
 import { createSampleDocumentPng } from "./seedData/sampleDocument";
-import { SAMPLE_LISTINGS, WORKFLOW_LISTINGS } from "./seedData/sampleListings";
+import {
+  MARKET_LISTINGS,
+  SAMPLE_LISTINGS,
+  WORKFLOW_LISTINGS,
+} from "./seedData/sampleListings";
 import { uploadToCloudinary } from "./uploadToCloudinary";
 
 // ============================================
@@ -281,7 +297,8 @@ const daysAgo = (days: number) => new Date(Date.now() - days * DAY_MS);
 
 /*
  * Demo listings by the demo seller and dealer: the approved catalogue plus
- * one or more listings in every status (WORKFLOW_LISTINGS).
+ * one or more listings in every status (WORKFLOW_LISTINGS), plus market
+ * listings that give price insight enough comparables (MARKET_LISTINGS).
  * Idempotent per sample (seller + model + year + price), so an interrupted run can resume.
  */
 export const seedSampleListings = async () => {
@@ -312,6 +329,8 @@ export const seedSampleListings = async () => {
   for (const [index, sample] of [
     ...SAMPLE_LISTINGS,
     ...WORKFLOW_LISTINGS,
+    // comparables for price insight (Phase 2 · Part 2a)
+    ...MARKET_LISTINGS,
   ].entries()) {
     const brand = await prisma.brand.findUnique({
       where: { slug: sample.brand },
@@ -1573,6 +1592,185 @@ const printDemoCredentials = () => {
 };
 
 // ============================================
+// Demo Saved Searches (Phase 2 · Part 2b)
+// ============================================
+
+type TDemoSavedSearch = {
+  user: "buyer" | "buyer2";
+  query: Record<string, string>;
+  alertFrequency: SavedSearchAlertFrequency;
+  // matches already announced (instant) or still waiting (daily digest)
+  pending: boolean;
+};
+
+const DEMO_SAVED_SEARCHES: TDemoSavedSearch[] = [
+  {
+    user: "buyer",
+    query: {
+      vehicleType: "bike",
+      brand: "yamaha",
+      model: "r15-v4",
+      maxPrice: "500000",
+      condition: "USED",
+    },
+    alertFrequency: SavedSearchAlertFrequency.INSTANT,
+    pending: false,
+  },
+  {
+    user: "buyer",
+    query: {
+      vehicleType: "bike",
+      brand: "bajaj",
+      model: "pulsar-n160",
+      division: "Dhaka",
+    },
+    alertFrequency: SavedSearchAlertFrequency.DAILY,
+    pending: true,
+  },
+  {
+    user: "buyer2",
+    query: { vehicleType: "bike", "spec.bikeCategory": "scooter" },
+    alertFrequency: SavedSearchAlertFrequency.OFF,
+    pending: false,
+  },
+];
+
+/*
+ * Saved searches for the demo buyers, with matches found by the real
+ * matcher SQL. The buyer's R15 search has 2 "new" matches (after
+ * lastViewedAt) and one price drop; the Pulsar search has matches
+ * waiting for the daily digest. Idempotent per user + query.
+ */
+const seedDemoSavedSearches = async (users: TDemoUsers) => {
+  let created = 0;
+
+  for (const demo of DEMO_SAVED_SEARCHES) {
+    const userId = users[demo.user].id;
+    const query = canonicalizeSearchQuery(demo.query);
+    const queryHash = hashSearchQuery(query);
+
+    const exists = await prisma.savedSearch.findUnique({
+      where: { userId_queryHash: { userId, queryHash } },
+      select: { id: true },
+    });
+
+    if (exists) continue;
+
+    const { filters } = await resolveSearchFilters(query);
+
+    if (!filters) {
+      console.log("Skipping demo saved search: filters not found", query);
+      continue;
+    }
+
+    const [brands, models, vehicleType] = await Promise.all([
+      prisma.brand.findMany({ select: { slug: true, name: true } }),
+      prisma.vehicleModel.findMany({ select: { slug: true, name: true } }),
+      prisma.vehicleType.findFirst({
+        where: { slug: query.vehicleType ?? "" },
+        select: { slug: true, name: true, attributes: true },
+      }),
+    ]);
+
+    const name = buildSavedSearchName(
+      describeSearchQuery(query, {
+        vehicleTypes: new Map(
+          vehicleType
+            ? [
+                [
+                  vehicleType.slug,
+                  {
+                    name: vehicleType.name,
+                    attributes: parseAttributes(vehicleType.attributes),
+                  },
+                ],
+              ]
+            : [],
+        ),
+        brands: new Map(brands.map((brand) => [brand.slug, brand.name])),
+        models: new Map(models.map((model) => [model.slug, model.name])),
+      }),
+    );
+
+    const savedSearch = await prisma.savedSearch.create({
+      data: {
+        userId,
+        name,
+        query,
+        queryHash,
+        vehicleTypeId: filters.vehicleTypeId ?? null,
+        alertFrequency: demo.alertFrequency,
+        // matches from the last 2 days count as "new"
+        lastViewedAt: daysAgo(2),
+        lastAlertedAt: demo.pending ? null : daysAgo(1),
+      },
+    });
+
+    const candidates = await prisma.listing.findMany({
+      where: {
+        status: ListingStatus.APPROVED,
+        isDeleted: false,
+        sellerId: { not: userId },
+      },
+      orderBy: { approvedAt: "desc" },
+      select: { id: true, price: true },
+    });
+
+    const matching: { id: string; price: unknown }[] = [];
+
+    for (const candidate of candidates) {
+      if (await listingMatchesFilters(filters, candidate.id)) {
+        matching.push(candidate);
+      }
+
+      if (matching.length === 4) break;
+    }
+
+    for (const [index, listing] of matching.entries()) {
+      // two fresh matches, the rest older than lastViewedAt
+      const matchedAt = index < 2 ? daysAgo(index * 0.5) : daysAgo(3 + index);
+
+      await prisma.savedSearchMatch.create({
+        data: {
+          savedSearchId: savedSearch.id,
+          listingId: listing.id,
+          kind: SavedSearchMatchKind.NEW_LISTING,
+          matchedAt,
+          notifiedAt: demo.pending ? null : matchedAt,
+        },
+      });
+    }
+
+    // one price drop on the oldest match of the instant search
+    const dropped = matching[matching.length - 1];
+
+    if (
+      !demo.pending &&
+      demo.alertFrequency === SavedSearchAlertFrequency.INSTANT &&
+      dropped
+    ) {
+      const newPrice = Number(dropped.price);
+
+      await prisma.savedSearchMatch.create({
+        data: {
+          savedSearchId: savedSearch.id,
+          listingId: dropped.id,
+          kind: SavedSearchMatchKind.PRICE_DROP,
+          oldPrice: newPrice + 15000,
+          newPrice,
+          matchedAt: daysAgo(1),
+          notifiedAt: daysAgo(1),
+        },
+      });
+    }
+
+    created += 1;
+  }
+
+  console.log(`Demo saved searches created: ${created}`);
+};
+
+// ============================================
 // Runner
 // ============================================
 
@@ -1599,6 +1797,7 @@ const runSeed = async () => {
       await seedDemoReports(users);
       await seedDemoOffers(users);
       await seedDemoTestRides(users);
+      await seedDemoSavedSearches(users);
     } else {
       console.log("Some demo users are missing. Skipping demo activity.");
     }

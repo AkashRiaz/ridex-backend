@@ -236,6 +236,10 @@ export const buildSearchSql = (input: ISearchListingsInput) => {
     );
   }
 
+  if (input.listingIds) {
+    conditions.push(Prisma.sql`l."id" = ANY(${input.listingIds})`);
+  }
+
   if (input.vehicleTypeId) {
     conditions.push(Prisma.sql`l."vehicleTypeId" = ${input.vehicleTypeId}`);
   }

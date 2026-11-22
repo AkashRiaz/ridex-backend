@@ -3,6 +3,7 @@ import app from "./app";
 import { config } from "./app/config";
 import { registerEventHandlers } from "./app/events/registerEventHandlers";
 import { startNotificationEmailWorker } from "./app/jobs/notificationEmail.job";
+import { startSavedSearchWorker } from "./app/jobs/savedSearchAlert.job";
 import { startScheduledWorker } from "./app/jobs/scheduled.job";
 import {
   deleteOldNotifications,
@@ -10,6 +11,7 @@ import {
   expireListings,
   expireOffers,
   purgeVerificationDocuments,
+  sendSavedSearchDigests,
 } from "./app/lib/cron";
 import { isSmtpConfigured, transporter } from "./app/lib/nodemailer";
 import { prisma } from "./app/lib/prisma";
@@ -57,6 +59,7 @@ const main = async () => {
     await purgeVerificationDocuments();
     await deleteOldNotifications();
     await expireOffers();
+    await sendSavedSearchDigests();
 
     registerEventHandlers();
 
@@ -65,6 +68,9 @@ const main = async () => {
 
     startScheduledWorker();
     console.log("Scheduled jobs worker started.");
+
+    startSavedSearchWorker();
+    console.log("Saved-search alert worker started.");
 
     server = createServer(app);
     initSocket(server, [registerChatSocketHandlers]);

@@ -108,6 +108,8 @@ model Listing {
 
   testRideAvailabilities TestRideAvailability[]
 
+  savedSearchMatches SavedSearchMatch[]
+
   @@index([status])
   @@index([sellerId])
   @@index([vehicleTypeId])

@@ -3,6 +3,7 @@ import { config } from "../config";
 import { ListingService } from "../module/listing/listing.service";
 import { NotificationService } from "../module/notification/notification.service";
 import { OfferService } from "../module/offer/offer.service";
+import { SavedSearchService } from "../module/savedSearch/savedSearch.service";
 import { TestRideService } from "../module/testRide/testRide.service";
 import { VerificationService } from "../module/verification/verification.service";
 import { prisma } from "./prisma";
@@ -113,4 +114,26 @@ export const deleteOldNotifications = async () => {
       console.error("Error deleting old notifications:", error);
     }
   });
+};
+
+/*
+ * Daily at SAVED_SEARCH_DIGEST_HOUR (local TIMEZONE): one digest per saved
+ * search with matches that were not announced yet.
+ */
+export const sendSavedSearchDigests = async () => {
+  cron.schedule(
+    `0 ${config.saved_search_digest_hour} * * *`,
+    async () => {
+      try {
+        const count = await SavedSearchService.sendDailyDigests();
+
+        if (count > 0) {
+          console.log(`Sent ${count} saved-search digest(s).`);
+        }
+      } catch (error) {
+        console.error("Error sending saved-search digests:", error);
+      }
+    },
+    { timezone: config.timezone },
+  );
 };

@@ -112,6 +112,10 @@
     {
       "key": "slotStartsAt",
       "value": ""
+    },
+    {
+      "key": "savedSearchId",
+      "value": ""
     }
   ],
   "auth": {
@@ -2824,6 +2828,137 @@
             "method": "PATCH",
             "url": "{{apiUrl}}/test-rides/{{testRideId}}/no-show",
             "description": "Seller only, CONFIRMED and already started."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Price Insights",
+      "item": [
+        {
+          "name": "Listing Price Insight",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/price-insights/listings/{{listingSlug}}",
+            "description": "Public for APPROVED and SOLD listings. The owner and staff also see unpublished ones (send the token). Compares against the same model, the same condition group (new, or used + reconditioned), and live listings or ones sold within PRICE_INSIGHT_SOLD_LOOKBACK_DAYS. Tiers: year ±1 and mileage ±50%, then year ±2, then year ±3. The first tier with PRICE_INSIGHT_MIN_SAMPLE listings (after outliers are removed) is used. rating: GOOD_DEAL (≤ −PRICE_INSIGHT_DEAL_PERCENT% from the median), FAIR, HIGH (≥ +%), or INSUFFICIENT_DATA with reason NO_MODEL | TOO_FEW_COMPARABLES. Cached per listing and price."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Compare",
+      "item": [
+        {
+          "name": "Compare Listings",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/compare?ids={{listingId}}",
+            "description": "Public. ids = 1–4 comma-separated listing UUIDs; columns come back in the order sent. All listings must share one vehicle type (400 otherwise). Live and sold listings only: ids that are gone come back in missingIds instead of an error. Returns listings (card fields, description, color, priceInsight), specRows (one per attribute with a value: label, group, unit, values per column, isDifferent), and highlights (lowestPrice, lowestMileage, newestYear, bestDeal: listing ids, ties shared, empty when all are equal)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Saved Searches",
+      "item": [
+        {
+          "name": "Save Search",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/saved-searches",
+            "description": "BUYER / SELLER / DEALER / DEALER_STAFF / INSPECTOR. query = the search page's URL params (same keys as GET /search/listings, spec.* included). Paging, sorting and unknown keys are dropped; lists are sorted, so the same filters in another order are the same search (409 when already saved). At least one filter is required, and filters are checked with the search rules (400). name is optional (generated from the filters, e.g. \"Yamaha · R15 V4 · Under BDT 500,000\"). alertFrequency INSTANT (default) | DAILY | OFF, notifyPriceDrops (default true). At most SAVED_SEARCH_MAX_PER_USER per user. Saves the id as savedSearchId.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": {\n    \"vehicleType\": \"bike\",\n    \"brand\": \"yamaha\",\n    \"maxPrice\": \"500000\",\n    \"spec.abs\": \"dual-channel\"\n  },\n  \"alertFrequency\": \"INSTANT\",\n  \"notifyPriceDrops\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body?.data?.id) pm.collectionVariables.set('savedSearchId', body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Saved Searches",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/saved-searches?page=1&limit=20",
+            "description": "BUYER / SELLER / DEALER / DEALER_STAFF / INSPECTOR. Newest first, ?searchTerm= filters by name. Each item has summary (readable filter chips), searchUrl (frontend results link), newMatchesCount (live matches since lastViewedAt) and totalMatchesCount. Saves the first id as savedSearchId."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body?.data?.[0]?.id) pm.collectionVariables.set('savedSearchId', body.data[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lookup Current Search",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/saved-searches/lookup?vehicleType=bike&brand=yamaha&maxPrice=500000&spec.abs=dual-channel&sortBy=price_asc&page=2",
+            "description": "BUYER / SELLER / DEALER / DEALER_STAFF / INSPECTOR. Pass the search page's params. Returns { savedSearch: { id, name, alertFrequency, notifyPriceDrops } | null } — the search page uses it for the \"Saved\" state."
+          }
+        },
+        {
+          "name": "Saved Search Detail",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/saved-searches/{{savedSearchId}}",
+            "description": "BUYER / SELLER / DEALER / DEALER_STAFF / INSPECTOR. Owner only (404 otherwise). The saved search plus its 20 latest matches: kind NEW_LISTING | PRICE_DROP, oldPrice/newPrice for drops, matchedAt, isNew, and the listing card (sold listings keep their status)."
+          }
+        },
+        {
+          "name": "Update Saved Search",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/saved-searches/{{savedSearchId}}",
+            "description": "BUYER / SELLER / DEALER / DEALER_STAFF / INSPECTOR. Rename, change alertFrequency, or turn price-drop alerts on/off. At least one field.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Yamaha with dual ABS\",\n  \"alertFrequency\": \"DAILY\",\n  \"notifyPriceDrops\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Mark Saved Search Seen",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/saved-searches/{{savedSearchId}}/seen",
+            "description": "BUYER / SELLER / DEALER / DEALER_STAFF / INSPECTOR. Sets lastViewedAt to now, which clears newMatchesCount. The frontend calls it when the detail page opens."
+          }
+        },
+        {
+          "name": "Delete Saved Search",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/saved-searches/{{savedSearchId}}",
+            "description": "BUYER / SELLER / DEALER / DEALER_STAFF / INSPECTOR. Deletes the search and its matches."
           }
         }
       ]

@@ -31,6 +31,8 @@ model VehicleType {
 
   listings Listing[]
 
+  savedSearches SavedSearch[]
+
   @@index([isActive])
   @@index([sortOrder])
   @@map("vehicle_types")

@@ -149,6 +149,39 @@ export const config = {
   test_ride_booking_days: Number(process.env.TEST_RIDE_BOOKING_DAYS || 14),
 
   // ============================================
+  // Price Insight
+  // ============================================
+
+  // fewest comparable listings needed for a rating
+  price_insight_min_sample: Number(process.env.PRICE_INSIGHT_MIN_SAMPLE || 5),
+  // this percent below the median = good deal, above = high
+  price_insight_deal_percent: Number(
+    process.env.PRICE_INSIGHT_DEAL_PERCENT || 10,
+  ),
+  // sold listings count as comparables for this many days after the sale
+  price_insight_sold_lookback_days: Number(
+    process.env.PRICE_INSIGHT_SOLD_LOOKBACK_DAYS || 180,
+  ),
+  // 0 turns the cache off
+  price_insight_cache_seconds: Number(
+    process.env.PRICE_INSIGHT_CACHE_SECONDS || 21600,
+  ),
+
+  // ============================================
+  // Saved Searches
+  // ============================================
+
+  saved_search_max_per_user: Number(
+    process.env.SAVED_SEARCH_MAX_PER_USER || 20,
+  ),
+  // instant alerts per saved search per 24h; later matches wait for the digest
+  saved_search_instant_max_per_day: Number(
+    process.env.SAVED_SEARCH_INSTANT_MAX_PER_DAY || 10,
+  ),
+  // local hour (TIMEZONE) the daily digest is sent, 0-23
+  saved_search_digest_hour: Number(process.env.SAVED_SEARCH_DIGEST_HOUR || 9),
+
+  // ============================================
   // Notifications
   // ============================================
 

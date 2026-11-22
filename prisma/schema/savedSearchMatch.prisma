@@ -1,0 +1,38 @@
+/**
+ * A listing that matched a saved search: once as NEW_LISTING when it went
+ * live, and once per saved search as PRICE_DROP (updated on every new drop).
+ * notifiedAt null = waiting for the daily digest.
+ */
+model SavedSearchMatch {
+  id String @id @default(uuid())
+
+  savedSearchId String
+
+  listingId String
+
+  kind SavedSearchMatchKind
+
+  // PRICE_DROP only
+  oldPrice Decimal? @db.Decimal(12, 2)
+
+  newPrice Decimal? @db.Decimal(12, 2)
+
+  // first match, or the latest price drop
+  matchedAt DateTime @default(now())
+
+  notifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  savedSearch SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([savedSearchId, listingId, kind])
+  @@index([savedSearchId, matchedAt])
+  @@index([listingId])
+  @@index([notifiedAt])
+  @@map("saved_search_matches")
+}

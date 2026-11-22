@@ -3,14 +3,17 @@ import { AuditLogRoutes } from "../module/auditLog/auditLog.route";
 import { AuthRoutes } from "../module/auth/auth.route";
 import { BrandRoutes } from "../module/brand/brand.route";
 import { ChatRoutes } from "../module/chat/chat.route";
+import { CompareRoutes } from "../module/compare/compare.route";
 import { DashboardRoutes } from "../module/dashboard/dashboard.route";
 import { ListingRoutes } from "../module/listing/listing.route";
 import { NotificationRoutes } from "../module/notification/notification.route";
 import { OfferRoutes } from "../module/offer/offer.route";
+import { PriceInsightRoutes } from "../module/priceInsight/priceInsight.route";
 import { QuickReplyRoutes } from "../module/quickReply/quickReply.route";
 import { RecentlyViewedRoutes } from "../module/recentlyViewed/recentlyViewed.route";
 import { ReportRoutes } from "../module/report/report.route";
 import { ReviewRoutes } from "../module/review/review.route";
+import { SavedSearchRoutes } from "../module/savedSearch/savedSearch.route";
 import { TestRideRoutes } from "../module/testRide/testRide.route";
 import { SearchRoutes } from "../module/search/search.route";
 import { UserRoutes } from "../module/user/user.route";
@@ -52,6 +55,9 @@ const moduleRoutes: TModuleRoute[] = [
   { path: "/audit-logs", route: AuditLogRoutes },
   { path: "/offers", route: OfferRoutes },
   { path: "/test-rides", route: TestRideRoutes },
+  { path: "/price-insights", route: PriceInsightRoutes },
+  { path: "/compare", route: CompareRoutes },
+  { path: "/saved-searches", route: SavedSearchRoutes },
 ];
 
 moduleRoutes.forEach((moduleRoute) => {

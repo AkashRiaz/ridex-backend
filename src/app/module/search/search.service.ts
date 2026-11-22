@@ -12,8 +12,13 @@ import { parseAttributes } from "../vehicleType/vehicleType.utils";
 import {
   SearchFiltersQueryZodSchema,
   SearchListingsQueryZodSchema,
+  TSearchListingsQuery,
 } from "./search.validation";
-import { IFeaturedCandidate, IHomeData } from "./search.interface";
+import {
+  IFeaturedCandidate,
+  IHomeData,
+  IResolvedSearchFilters,
+} from "./search.interface";
 import {
   FEATURED_ACTIVITY_DAYS,
   FEATURED_LIMIT,
@@ -62,23 +67,24 @@ const emptyResult = (page: number, limit: number) => ({
 });
 
 /*
- * GET /search/listings
+ * Validates search params and resolves slugs → ids.
+ * Returns filters: null when the search can have no results (unknown
+ * vehicle type, brand or model), so shared links and saved searches keep
+ * working after catalog changes instead of failing.
  */
-const searchListings = async (rawQuery: Record<string, unknown>) => {
+export const resolveSearchFilters = async (
+  rawQuery: Record<string, unknown>,
+): Promise<{
+  query: TSearchListingsQuery;
+  filters: IResolvedSearchFilters | null;
+}> => {
   const query = parseOrThrow(SearchListingsQueryZodSchema, rawQuery);
 
-  const page = query.page ?? 1;
-  const limit = query.limit ?? 24;
-
-  /*
-   * Resolve slugs → ids. Unknown values mean "no results", not an error,
-   * so shared links keep working after catalog changes.
-   */
   const vehicleType = query.vehicleType
     ? await findVehicleType(query.vehicleType)
     : null;
 
-  if (query.vehicleType && !vehicleType) return emptyResult(page, limit);
+  if (query.vehicleType && !vehicleType) return { query, filters: null };
 
   const attributes = vehicleType
     ? parseAttributes(vehicleType.attributes)
@@ -99,7 +105,7 @@ const searchListings = async (rawQuery: Record<string, unknown>) => {
       select: { id: true },
     });
 
-    if (brands.length === 0) return emptyResult(page, limit);
+    if (brands.length === 0) return { query, filters: null };
 
     brandIds = brands.map((brand) => brand.id);
   }
@@ -118,18 +124,14 @@ const searchListings = async (rawQuery: Record<string, unknown>) => {
       select: { id: true },
     });
 
-    if (models.length === 0) return emptyResult(page, limit);
+    if (models.length === 0) return { query, filters: null };
 
     vehicleModelIds = models.map((model) => model.id);
   }
 
-  const near =
-    query.lat !== undefined && query.lng !== undefined
-      ? { lat: query.lat, lng: query.lng, radiusKm: query.radius ?? 25 }
-      : undefined;
-
-  const rows = await prisma.$queryRaw<TSearchRow[]>(
-    buildSearchSql({
+  return {
+    query,
+    filters: {
       searchTerm: query.searchTerm,
       vehicleTypeId: vehicleType?.id,
       brandIds,
@@ -146,8 +148,29 @@ const searchListings = async (rawQuery: Record<string, unknown>) => {
           : query.negotiable === "true",
       division: query.division,
       district: query.district,
-      near,
+      near:
+        query.lat !== undefined && query.lng !== undefined
+          ? { lat: query.lat, lng: query.lng, radiusKm: query.radius ?? 25 }
+          : undefined,
       specFilters,
+    },
+  };
+};
+
+/*
+ * GET /search/listings
+ */
+const searchListings = async (rawQuery: Record<string, unknown>) => {
+  const { query, filters } = await resolveSearchFilters(rawQuery);
+
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 24;
+
+  if (!filters) return emptyResult(page, limit);
+
+  const rows = await prisma.$queryRaw<TSearchRow[]>(
+    buildSearchSql({
+      ...filters,
       sortBy: query.sortBy ?? (query.searchTerm ? "relevance" : "newest"),
       limit,
       skip: (page - 1) * limit,
@@ -177,6 +200,26 @@ const searchListings = async (rawQuery: Record<string, unknown>) => {
       .filter((card) => card !== null),
     meta: queryBuilder.buildMeta(page, limit, Number(rows[0].total)),
   };
+};
+
+/*
+ * Does this live listing match the resolved filters? Same SQL as the search page.
+ */
+export const listingMatchesFilters = async (
+  filters: IResolvedSearchFilters,
+  listingId: string,
+) => {
+  const rows = await prisma.$queryRaw<TSearchRow[]>(
+    buildSearchSql({
+      ...filters,
+      listingIds: [listingId],
+      sortBy: "newest",
+      limit: 1,
+      skip: 0,
+    }),
+  );
+
+  return rows.length > 0;
 };
 
 /*

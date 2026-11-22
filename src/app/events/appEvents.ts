@@ -1,5 +1,9 @@
 import { EventEmitter } from "node:events";
 import { IOfferRef } from "../module/offer/offer.interface";
+import {
+  ISavedSearchDigestEvent,
+  ISavedSearchMatchedEvent,
+} from "../module/savedSearch/savedSearch.interface";
 import { ITestRideRef } from "../module/testRide/testRide.interface";
 import { TReminderKind } from "../module/testRide/testRide.utils";
 
@@ -77,6 +81,10 @@ export type TAppEvents = {
   "testRide.completed": ITestRideRef;
   "testRide.noShow": ITestRideRef;
   "testRide.reminder": ITestRideRef & { kind: TReminderKind };
+  // a live listing matched a saved search with instant alerts
+  "savedSearch.matched": ISavedSearchMatchedEvent;
+  // daily digest of matches not announced yet
+  "savedSearch.digest": ISavedSearchDigestEvent;
 };
 
 class TypedEmitter {

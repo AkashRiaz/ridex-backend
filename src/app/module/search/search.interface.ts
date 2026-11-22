@@ -23,7 +23,11 @@ export type TSpecFilter =
   | { kind: "allOf"; key: string; values: string[] } // MULTI_SELECT
   | { kind: "boolean"; key: string; value: boolean };
 
-export interface ISearchListingsInput {
+/*
+ * Search filters with slugs resolved to ids (search.service resolveSearchFilters).
+ * Shared by /search/listings and the saved-search alert matcher.
+ */
+export interface IResolvedSearchFilters {
   searchTerm?: string;
   vehicleTypeId?: string;
   brandIds?: string[];
@@ -39,6 +43,11 @@ export interface ISearchListingsInput {
   district?: string;
   near?: { lat: number; lng: number; radiusKm: number };
   specFilters: TSpecFilter[];
+}
+
+export interface ISearchListingsInput extends IResolvedSearchFilters {
+  // restrict to these listings (alert matching checks one listing at a time)
+  listingIds?: string[];
   sortBy: TSearchSort;
   limit: number;
   skip: number;

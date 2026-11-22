@@ -13,6 +13,8 @@ export const QUEUE_NAMES = {
   notificationEmail: "notification-email",
   // delayed domain jobs: offer expiry, test ride expiry and reminders
   scheduled: "scheduled",
+  // saved-search alert matching for new and price-dropped listings
+  savedSearch: "saved-search",
 } as const;
 
 type TQueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

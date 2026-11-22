@@ -438,7 +438,66 @@ export const registerNotificationHandlers = () => {
       });
     }),
   );
+
+  // ============================================
+  // Saved searches
+  // ============================================
+
+  appEvents.on(
+    "savedSearch.matched",
+    safeHandler("notify:savedSearch.matched", async (event) => {
+      const isPriceDrop = event.kind === "PRICE_DROP";
+
+      await NotificationService.notify(event.userId, {
+        type: isPriceDrop
+          ? NotificationType.SAVED_SEARCH_PRICE_DROP
+          : NotificationType.SAVED_SEARCH_MATCH,
+        title: isPriceDrop
+          ? `Price drop in “${event.savedSearchName}”`
+          : `New match for “${event.savedSearchName}”`,
+        body:
+          isPriceDrop && event.oldPrice !== null
+            ? `"${event.listingTitle}" is now ${formatPrice(event.price)} (was ${formatPrice(event.oldPrice)}).`
+            : `"${event.listingTitle}" · ${formatPrice(event.price)}`,
+        link: listingLink(event.listingSlug),
+        data: {
+          savedSearchId: event.savedSearchId,
+          listingId: event.listingId,
+          kind: event.kind,
+        },
+        ctaLabel: "View listing",
+      });
+    }),
+  );
+
+  appEvents.on(
+    "savedSearch.digest",
+    safeHandler("notify:savedSearch.digest", async (event) => {
+      const parts = [
+        event.newListings > 0 &&
+          `${event.newListings} new listing${event.newListings === 1 ? "" : "s"}`,
+        event.priceDrops > 0 &&
+          `${event.priceDrops} price drop${event.priceDrops === 1 ? "" : "s"}`,
+      ].filter(Boolean);
+
+      await NotificationService.notify(event.userId, {
+        type: NotificationType.SAVED_SEARCH_MATCH,
+        title: `${parts.join(" and ")} in “${event.savedSearchName}”`,
+        body: `Including ${event.sampleTitles.map((title) => `"${title}"`).join(", ")}.`,
+        link: (role) => savedSearchLink(role, event.savedSearchId),
+        data: {
+          savedSearchId: event.savedSearchId,
+          newListings: event.newListings,
+          priceDrops: event.priceDrops,
+        },
+        ctaLabel: "See matches",
+      });
+    }),
+  );
 };
+
+const savedSearchLink = (role: Role, savedSearchId: string) =>
+  dashboardLink(role, `/saved-searches/${savedSearchId}`);
 
 const testRideData = (event: ITestRideRef) => ({
   testRideId: event.testRideId,

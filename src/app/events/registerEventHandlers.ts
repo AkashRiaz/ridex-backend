@@ -2,12 +2,13 @@ import { config } from "../config";
 import { TAppEvents, appEvents, safeHandler } from "./appEvents";
 import { registerNotificationHandlers } from "./notificationHandlers";
 import { registerOfferHandlers } from "./offerHandlers";
+import { registerSavedSearchHandlers } from "./savedSearchHandlers";
 import { registerTestRideHandlers } from "./testRideHandlers";
 
 /*
  * Development log for every event, plus the notification handlers
- * (Phase 1 · Part 5). Saved-search alert, social auto-post and
- * analytics handlers subscribe here later.
+ * (Phase 1 · Part 5), offers, test rides and saved-search alerts
+ * (Phase 2). Social auto-post and analytics handlers subscribe here later.
  */
 export const registerEventHandlers = () => {
   const events: (keyof TAppEvents)[] = [
@@ -41,6 +42,8 @@ export const registerEventHandlers = () => {
     "testRide.completed",
     "testRide.noShow",
     "testRide.reminder",
+    "savedSearch.matched",
+    "savedSearch.digest",
   ];
 
   for (const event of events) {
@@ -57,4 +60,5 @@ export const registerEventHandlers = () => {
   registerNotificationHandlers();
   registerOfferHandlers();
   registerTestRideHandlers();
+  registerSavedSearchHandlers();
 };

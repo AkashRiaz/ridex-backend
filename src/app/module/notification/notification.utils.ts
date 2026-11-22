@@ -38,6 +38,7 @@ export const CATEGORY_DEFAULTS: Record<NotificationCategory, TCategoryDefault> =
       lockedInApp: false,
       lockedEmail: false,
     },
+    // wishlist price drops and saved-search alerts
     PRICE_ALERTS: {
       inApp: true,
       email: true,
@@ -98,6 +99,8 @@ export const TYPE_CATEGORY: Record<NotificationType, NotificationCategory> = {
   TEST_RIDE_CANCELLED: NotificationCategory.TEST_RIDES,
   TEST_RIDE_EXPIRED: NotificationCategory.TEST_RIDES,
   TEST_RIDE_REMINDER: NotificationCategory.TEST_RIDES,
+  SAVED_SEARCH_MATCH: NotificationCategory.PRICE_ALERTS,
+  SAVED_SEARCH_PRICE_DROP: NotificationCategory.PRICE_ALERTS,
   SYSTEM: NotificationCategory.ACCOUNT,
 };
 

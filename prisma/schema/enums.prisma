@@ -150,6 +150,9 @@ enum NotificationType {
   TEST_RIDE_CANCELLED
   TEST_RIDE_EXPIRED
   TEST_RIDE_REMINDER
+  // instant alert, or the daily digest of a saved search
+  SAVED_SEARCH_MATCH
+  SAVED_SEARCH_PRICE_DROP
   SYSTEM
 }
 
@@ -173,4 +176,17 @@ enum TestRideStatus {
   NO_SHOW
   // never confirmed before its start time
   EXPIRED
+}
+
+enum SavedSearchAlertFrequency {
+  // in-app + email per match (capped per day; the rest goes to the digest)
+  INSTANT
+  // one digest a day
+  DAILY
+  OFF
+}
+
+enum SavedSearchMatchKind {
+  NEW_LISTING
+  PRICE_DROP
 }
