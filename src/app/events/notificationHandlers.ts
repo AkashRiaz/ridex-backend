@@ -5,6 +5,7 @@ import { formatPrice } from "../helper/formatPrice";
 import { prisma } from "../lib/prisma";
 import { ChatService } from "../module/chat/chat.service";
 import { NotificationService } from "../module/notification/notification.service";
+import { ILoanLeadRef } from "../module/loanLead/loanLead.interface";
 import { IOfferRef } from "../module/offer/offer.interface";
 import { OfferService } from "../module/offer/offer.service";
 import { offerRecipientId } from "../module/offer/offer.utils";
@@ -494,7 +495,121 @@ export const registerNotificationHandlers = () => {
       });
     }),
   );
+
+  // ============================================
+  // Financing requests (loan leads)
+  // ============================================
+
+  appEvents.on(
+    "loanLead.submitted",
+    safeHandler("notify:loanLead.submitted", async (event) => {
+      await NotificationService.notifyUsers(await getLoanLeadAdminIds(), {
+        type: NotificationType.LOAN_LEAD_SUBMITTED,
+        title: `New financing request ${event.reference}`,
+        body: `${event.fullName} wants ${formatPrice(event.loanAmount)} for "${event.listingTitle}".`,
+        link: (role) => adminLoanLeadLink(role, event.loanLeadId),
+        data: loanLeadData(event),
+        ctaLabel: "Review request",
+      });
+    }),
+  );
+
+  appEvents.on(
+    "loanLead.withdrawn",
+    safeHandler("notify:loanLead.withdrawn", async (event) => {
+      await NotificationService.notifyUsers(await getLoanLeadAdminIds(), {
+        type: NotificationType.LOAN_LEAD_SUBMITTED,
+        title: `Financing request ${event.reference} was withdrawn`,
+        body: event.partnerName
+          ? `The buyer withdrew it after it was sent to ${event.partnerName}. Let the partner know.`
+          : `The buyer withdrew their request for "${event.listingTitle}".`,
+        link: (role) => adminLoanLeadLink(role, event.loanLeadId),
+        data: loanLeadData(event),
+        ctaLabel: "View request",
+      });
+    }),
+  );
+
+  appEvents.on(
+    "loanLead.sentToPartner",
+    safeHandler("notify:loanLead.sentToPartner", async (event) => {
+      await NotificationService.notify(event.buyerId, {
+        type: NotificationType.LOAN_LEAD_UPDATED,
+        title: `Your financing request was sent to ${event.partnerName}`,
+        body: `${event.partnerName} will contact you about "${event.listingTitle}". Reference: ${event.reference}.`,
+        link: (role) => buyerLoanLeadLink(role, event.loanLeadId),
+        data: loanLeadData(event),
+        ctaLabel: "View request",
+      });
+    }),
+  );
+
+  appEvents.on(
+    "loanLead.statusChanged",
+    safeHandler("notify:loanLead.statusChanged", async (event) => {
+      const partner = event.partnerName ?? "The finance partner";
+      const copy: Partial<Record<string, { title: string; body: string }>> = {
+        CONTACTED: {
+          title: `${partner} is reviewing your financing request`,
+          body: `Your request for "${event.listingTitle}" is being processed.`,
+        },
+        APPROVED: {
+          title: "Your financing request was approved",
+          body: `${partner} approved your loan for "${event.listingTitle}". They will guide you through the next steps.`,
+        },
+        DISBURSED: {
+          title: "Your loan has been disbursed",
+          body: `The loan for "${event.listingTitle}" was paid out. Enjoy the ride!`,
+        },
+        REJECTED: {
+          title: "Your financing request was not approved",
+          body:
+            event.closeReason ?? `${partner} could not approve this request.`,
+        },
+        CLOSED: {
+          title: "Your financing request was closed",
+          body:
+            event.closeReason ??
+            `Your request for "${event.listingTitle}" was closed.`,
+        },
+      };
+
+      const message = copy[event.status];
+      if (!message) return;
+
+      await NotificationService.notify(event.buyerId, {
+        type: NotificationType.LOAN_LEAD_UPDATED,
+        title: message.title,
+        body: message.body,
+        link: (role) => buyerLoanLeadLink(role, event.loanLeadId),
+        data: loanLeadData(event),
+        ctaLabel: "View request",
+      });
+    }),
+  );
 };
+
+// admins who manage loan leads (never moderators: leads hold income data)
+const getLoanLeadAdminIds = async () => {
+  const admins = await prisma.user.findMany({
+    where: { role: { in: [Role.SUPER_ADMIN, Role.ADMIN] }, isDeleted: false },
+    select: { id: true },
+  });
+
+  return admins.map((admin) => admin.id);
+};
+
+const adminLoanLeadLink = (role: Role, loanLeadId: string) =>
+  dashboardLink(role, `/loan-leads/${loanLeadId}`);
+
+const buyerLoanLeadLink = (role: Role, loanLeadId: string) =>
+  dashboardLink(role, `/financing-requests/${loanLeadId}`);
+
+const loanLeadData = (event: ILoanLeadRef) => ({
+  loanLeadId: event.loanLeadId,
+  listingId: event.listingId,
+  status: event.status,
+});
 
 const savedSearchLink = (role: Role, savedSearchId: string) =>
   dashboardLink(role, `/saved-searches/${savedSearchId}`);

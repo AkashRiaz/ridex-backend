@@ -14,6 +14,8 @@ import { RecentlyViewedRoutes } from "../module/recentlyViewed/recentlyViewed.ro
 import { ReportRoutes } from "../module/report/report.route";
 import { ReviewRoutes } from "../module/review/review.route";
 import { SavedSearchRoutes } from "../module/savedSearch/savedSearch.route";
+import { FinancePartnerRoutes } from "../module/financePartner/financePartner.route";
+import { LoanLeadRoutes } from "../module/loanLead/loanLead.route";
 import { TestRideRoutes } from "../module/testRide/testRide.route";
 import { SearchRoutes } from "../module/search/search.route";
 import { UserRoutes } from "../module/user/user.route";
@@ -58,6 +60,8 @@ const moduleRoutes: TModuleRoute[] = [
   { path: "/price-insights", route: PriceInsightRoutes },
   { path: "/compare", route: CompareRoutes },
   { path: "/saved-searches", route: SavedSearchRoutes },
+  { path: "/finance-partners", route: FinancePartnerRoutes },
+  { path: "/loan-leads", route: LoanLeadRoutes },
 ];
 
 moduleRoutes.forEach((moduleRoute) => {

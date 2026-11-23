@@ -135,6 +135,8 @@ model User {
 
   savedSearches SavedSearch[]
 
+  loanLeads LoanLead[]
+
   @@index([email])
   @@index([phone])
   @@index([role])

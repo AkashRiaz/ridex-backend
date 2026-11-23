@@ -182,6 +182,21 @@ export const config = {
   saved_search_digest_hour: Number(process.env.SAVED_SEARCH_DIGEST_HOUR || 9),
 
   // ============================================
+  // Financing (EMI + loan leads)
+  // ============================================
+
+  // open financing requests a user can have at once
+  loan_lead_max_open: Number(process.env.LOAN_LEAD_MAX_OPEN || 5),
+  // smallest down payment, in percent of the listing price
+  loan_min_down_payment_percent: Number(
+    process.env.LOAN_MIN_DOWN_PAYMENT_PERCENT || 10,
+  ),
+  // yearly percent the EMI calculator starts with
+  loan_default_interest_rate: Number(
+    process.env.LOAN_DEFAULT_INTEREST_RATE || 12,
+  ),
+
+  // ============================================
   // Notifications
   // ============================================
 

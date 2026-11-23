@@ -6,7 +6,8 @@
  *   Phase 1 → seedDemoUsers, seedVehicleTypes, seedBrandsAndModels, seedSampleListings,
  *             seedDemoConversations, seedDemoTrust, seedModerationHistory,
  *             seedVerificationRequests, seedDemoEngagement, seedDemoReviews, seedDemoReports
- *   Phase 2 → seedDemoOffers, seedDemoTestRides, seedDemoSavedSearches, seedPlans, seedCmsPages
+ *   Phase 2 → seedDemoOffers, seedDemoTestRides, seedDemoSavedSearches, seedFinancePartners,
+ *             seedDemoLoanLeads, seedPlans, seedCmsPages
  *   Phase 3 → seedGroups, seedBadges
  */
 import bcrypt from "bcrypt";
@@ -15,7 +16,9 @@ import {
   AuditAction,
   AuthProvider,
   DocumentKind,
+  EmploymentType,
   ListingStatus,
+  LoanLeadStatus,
   MessageType,
   NotificationCategory,
   NotificationType,
@@ -37,6 +40,7 @@ import { findDistrict } from "../helper/bdLocations";
 import { generateSlug } from "../helper/generateSlug";
 import { prisma } from "../lib/prisma";
 import { syncSearch } from "../module/listing/listing.service";
+import { buildLoanTerms } from "../module/loanLead/loanLead.utils";
 import { recalculateSellerRating } from "../module/review/review.utils";
 import {
   buildSavedSearchName,
@@ -1771,6 +1775,164 @@ const seedDemoSavedSearches = async (users: TDemoUsers) => {
 };
 
 // ============================================
+// Finance partners + loan leads (Phase 2 · Part 3)
+// ============================================
+
+// made-up lenders for the demo; contact addresses go nowhere real
+const DEMO_FINANCE_PARTNERS = [
+  {
+    name: "Swift Wheels Finance",
+    slug: "swift-wheels-finance",
+    description: "Quick two-wheeler loans with same-week approval.",
+    contactEmail: "leads@swiftwheels.demo",
+    contactPhone: "+8801700000101",
+    interestRateMin: 9.5,
+    interestRateMax: 13,
+    minDownPaymentPercent: 20,
+    maxTenureMonths: 36,
+    isActive: true,
+  },
+  {
+    name: "Green Road Credit",
+    slug: "green-road-credit",
+    description: "Low down payments for salaried riders.",
+    contactEmail: "partners@greenroad.demo",
+    contactPhone: "+8801700000102",
+    interestRateMin: 11,
+    interestRateMax: 15.5,
+    minDownPaymentPercent: 10,
+    maxTenureMonths: 48,
+    isActive: true,
+  },
+  {
+    name: "Harbor Motor Loans",
+    slug: "harbor-motor-loans",
+    description: "Paused: not taking new leads.",
+    contactEmail: "loans@harbormotor.demo",
+    contactPhone: null,
+    interestRateMin: 10,
+    interestRateMax: 14,
+    minDownPaymentPercent: 25,
+    maxTenureMonths: 24,
+    isActive: false,
+  },
+];
+
+export const seedFinancePartners = async () => {
+  let created = 0;
+
+  for (const partner of DEMO_FINANCE_PARTNERS) {
+    const exists = await prisma.financePartner.findUnique({
+      where: { slug: partner.slug },
+      select: { id: true },
+    });
+
+    if (exists) continue;
+
+    await prisma.financePartner.create({ data: partner });
+    created += 1;
+  }
+
+  console.log(`Demo finance partners created: ${created}`);
+};
+
+export const seedDemoLoanLeads = async (users: TDemoUsers) => {
+  const existing = await prisma.loanLead.count({
+    where: { buyerId: users.buyer.id },
+  });
+
+  if (existing > 0) {
+    console.log("Demo loan leads already exist. Skipping.");
+    return;
+  }
+
+  const [partner, listings] = await Promise.all([
+    prisma.financePartner.findUnique({
+      where: { slug: "swift-wheels-finance" },
+    }),
+    prisma.listing.findMany({
+      where: {
+        status: ListingStatus.APPROVED,
+        isDeleted: false,
+        sellerId: { not: users.buyer.id },
+      },
+      orderBy: { approvedAt: "desc" },
+      take: 2,
+      select: { id: true, price: true },
+    }),
+  ]);
+
+  if (!partner || listings.length < 2) {
+    console.log("Demo loan leads skipped: partner or listings missing.");
+    return;
+  }
+
+  const demoLeads = [
+    // fresh request, waiting for an admin
+    {
+      listing: listings[0],
+      status: LoanLeadStatus.NEW,
+      downPercent: 25,
+      tenureMonths: 24,
+      interestRate: 12,
+      createdAt: daysAgo(0.2),
+    },
+    // already with the partner, who has called the buyer
+    {
+      listing: listings[1],
+      status: LoanLeadStatus.CONTACTED,
+      downPercent: 30,
+      tenureMonths: 18,
+      interestRate: 11,
+      createdAt: daysAgo(3),
+    },
+  ];
+
+  for (const demo of demoLeads) {
+    const listingPrice = Number(demo.listing.price);
+    const downPayment = Math.round((listingPrice * demo.downPercent) / 100);
+    const terms = buildLoanTerms({
+      listingPrice,
+      downPayment,
+      tenureMonths: demo.tenureMonths,
+      interestRate: demo.interestRate,
+    });
+    const isSent = demo.status !== LoanLeadStatus.NEW;
+
+    await prisma.loanLead.create({
+      data: {
+        listingId: demo.listing.id,
+        buyerId: users.buyer.id,
+        preferredPartnerId: isSent ? partner.id : null,
+        partnerId: isSent ? partner.id : null,
+        listingPrice,
+        downPayment,
+        loanAmount: terms.loanAmount,
+        tenureMonths: demo.tenureMonths,
+        interestRate: demo.interestRate,
+        estimatedEmi: terms.estimatedEmi,
+        fullName: users.buyer.name,
+        phone: "+8801700000201",
+        email: DEMO_EMAILS.buyer,
+        district: "Dhaka",
+        monthlyIncome: 65000,
+        employmentType: EmploymentType.SALARIED,
+        note: isSent ? "Best time to call is after 6 pm." : "",
+        consentAt: demo.createdAt,
+        status: demo.status,
+        adminNote: isSent ? "Salaried, stable income. Good fit." : null,
+        partnerReference: isSent ? "SWF-2026-0412" : null,
+        sentAt: isSent ? daysAgo(2.5) : null,
+        contactedAt: isSent ? daysAgo(1) : null,
+        createdAt: demo.createdAt,
+      },
+    });
+  }
+
+  console.log(`Demo loan leads created: ${demoLeads.length}`);
+};
+
+// ============================================
 // Runner
 // ============================================
 
@@ -1785,6 +1947,7 @@ const runSeed = async () => {
     await seedBrandsAndModels();
     await seedSampleListings();
     await seedDemoConversations();
+    await seedFinancePartners();
 
     const users = await loadDemoUsers();
 
@@ -1798,6 +1961,7 @@ const runSeed = async () => {
       await seedDemoOffers(users);
       await seedDemoTestRides(users);
       await seedDemoSavedSearches(users);
+      await seedDemoLoanLeads(users);
     } else {
       console.log("Some demo users are missing. Skipping demo activity.");
     }

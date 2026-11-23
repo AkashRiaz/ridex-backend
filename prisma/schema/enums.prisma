@@ -122,6 +122,8 @@ enum NotificationCategory {
   ACCOUNT
   OFFERS
   TEST_RIDES
+  // financing requests (buyer) and new loan leads (admins)
+  FINANCING
 }
 
 enum NotificationType {
@@ -153,6 +155,10 @@ enum NotificationType {
   // instant alert, or the daily digest of a saved search
   SAVED_SEARCH_MATCH
   SAVED_SEARCH_PRICE_DROP
+  // to admins: a buyer sent or withdrew a financing request
+  LOAN_LEAD_SUBMITTED
+  // to the buyer: their financing request moved on
+  LOAN_LEAD_UPDATED
   SYSTEM
 }
 
@@ -189,4 +195,25 @@ enum SavedSearchAlertFrequency {
 enum SavedSearchMatchKind {
   NEW_LISTING
   PRICE_DROP
+}
+
+enum LoanLeadStatus {
+  NEW
+  SENT_TO_PARTNER
+  CONTACTED
+  APPROVED
+  DISBURSED
+  REJECTED
+  // by the buyer
+  WITHDRAWN
+  // by an admin, or by the system when the listing is gone
+  CLOSED
+}
+
+enum EmploymentType {
+  SALARIED
+  SELF_EMPLOYED
+  BUSINESS
+  STUDENT
+  OTHER
 }

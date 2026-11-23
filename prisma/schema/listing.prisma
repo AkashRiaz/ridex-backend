@@ -110,6 +110,8 @@ model Listing {
 
   savedSearchMatches SavedSearchMatch[]
 
+  loanLeads LoanLead[]
+
   @@index([status])
   @@index([sellerId])
   @@index([vehicleTypeId])

@@ -1,0 +1,94 @@
+/**
+ * A buyer's financing request for one listing.
+ * NEW → SENT_TO_PARTNER → CONTACTED → APPROVED → DISBURSED
+ * ↘ REJECTED (partner) | WITHDRAWN (buyer) | CLOSED (admin or system)
+ * Loan terms are a snapshot taken at submit time; the server recomputes
+ * loanAmount and estimatedEmi from them.
+ */
+model LoanLead {
+  id String @id @default(uuid())
+
+  listingId String
+
+  buyerId String
+
+  // the partner the buyer would like (optional)
+  preferredPartnerId String?
+
+  // the partner an admin sent the lead to
+  partnerId String?
+
+  // ---- terms (snapshot) ----
+  listingPrice Decimal @db.Decimal(12, 2)
+
+  downPayment Decimal @db.Decimal(12, 2)
+
+  loanAmount Decimal @db.Decimal(12, 2)
+
+  tenureMonths Int
+
+  // yearly percent used for the estimate
+  interestRate Decimal @db.Decimal(5, 2)
+
+  estimatedEmi Decimal @db.Decimal(12, 2)
+
+  // ---- applicant ----
+  fullName String
+
+  phone String
+
+  email String?
+
+  district String?
+
+  monthlyIncome Decimal? @db.Decimal(12, 2)
+
+  employmentType EmploymentType
+
+  note String @default("")
+
+  // the buyer agreed to share these details with a finance partner
+  consentAt DateTime
+
+  // ---- workflow ----
+  status LoanLeadStatus @default(NEW)
+
+  // internal, never shown to the buyer
+  adminNote String?
+
+  // the partner's own application number
+  partnerReference String?
+
+  // shown to the buyer for REJECTED / CLOSED
+  closeReason String?
+
+  sentAt DateTime?
+
+  contactedAt DateTime?
+
+  approvedAt DateTime?
+
+  disbursedAt DateTime?
+
+  // REJECTED / WITHDRAWN / CLOSED / DISBURSED
+  closedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  buyer User @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  preferredPartner FinancePartner? @relation("PreferredPartner", fields: [preferredPartnerId], references: [id], onDelete: SetNull)
+
+  partner FinancePartner? @relation("AssignedPartner", fields: [partnerId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([buyerId, status])
+  @@index([listingId, status])
+  @@index([partnerId])
+  @@index([preferredPartnerId])
+  @@map("loan_leads")
+}

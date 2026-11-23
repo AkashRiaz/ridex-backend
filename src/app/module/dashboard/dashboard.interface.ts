@@ -40,4 +40,6 @@ export interface IQueueCounts {
   reports: number;
   // null for moderators, who don't review verifications
   verifications: number | null;
+  // null for moderators, who don't manage loan leads
+  loanLeads: number | null;
 }

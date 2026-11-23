@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.14.0] — Phase 2 · Part 3a: finance partners and loan leads (2026-11-22)
+
+### Added
+- **`financePartner` module** (`/api/v1/finance-partners`): the banks and finance companies that receive leads.
+  - **Public:** `GET /active` returns active partners with their rate range, minimum down payment and maximum tenure (never contact details), plus the platform defaults for the EMI calculator.
+  - **Admin (ADMIN, SUPER_ADMIN):** `POST /` (logo upload, same as brands) · `GET /` (search, `isActive`, `openLeadsCount`) · `GET /:id` · `PATCH /:id` · `DELETE /:id`. Delete returns 409 while any lead refers to the partner; deactivate it instead.
+- **`loanLead` module** (`/api/v1/loan-leads`): a buyer's financing request for one listing.
+  - **Buyer** (buyer, seller, dealer, dealer staff, inspector):
+    - `POST /` sends a request.
+    - `GET /my` lists their own requests, with `?listingId=` and `?status=OPEN`.
+    - `GET /:id` returns one request.
+    - `PATCH /:id/withdraw` works while the request is NEW or SENT_TO_PARTNER.
+  - **Admin** (ADMIN and SUPER_ADMIN only; moderators are excluded because leads hold income and phone data):
+    - `GET /` lists requests with search, status, partner, listing and date filters; `meta.statusCounts` gives the counts for the tabs.
+    - `PATCH /:id/assign` sends a request to a partner.
+    - `PATCH /:id/status` updates the status.
+  - **Workflow:** `NEW → SENT_TO_PARTNER → CONTACTED → APPROVED → DISBURSED`, plus `REJECTED`, `WITHDRAWN` and `CLOSED`.
+    - Sending only happens through assign. It can be re-sent to another partner before the partner has called.
+    - Final statuses never change.
+    - REJECTED and CLOSED need a reason, which the buyer sees.
+    - Each step has its own timestamp (`sentAt`, `contactedAt`, `approvedAt`, `disbursedAt`, `closedAt`).
+    - Writes are status-guarded: if the request changed meanwhile, the caller gets a 409.
+  - **Rules (`loanLead.utils.ts`, pure):**
+    - The listing must be live, and buyers can't request financing for their own listing.
+    - One open request per listing, and at most `LOAN_LEAD_MAX_OPEN` open requests (default 5). Both checks run under an advisory lock per buyer.
+    - The down payment must be at least `LOAN_MIN_DOWN_PAYMENT_PERCENT` of the price (default 10) and less than the price.
+    - Tenure is 6–60 months and the rate 0–40%.
+    - If the buyer picks a partner, that partner's minimum down payment, maximum tenure and rate range apply.
+    - Consent is required and stored as `consentAt`.
+  - **Terms:** the price is taken from the listing. `loanAmount` and `estimatedEmi` are computed on the server with the reducing-balance formula (`calculateEmi`, the same one the frontend calculator uses).
+  - **Privacy:** buyers never see `adminNote` or the partner's contact details.
+- **Events (after commit):**
+  - `loanLead.submitted` and `loanLead.withdrawn` notify admins.
+  - `loanLead.sentToPartner` and `loanLead.statusChanged` notify the buyer.
+  - `events/loanLeadHandlers.ts`: when a listing is sold, expires, is taken down or removed, only its **NEW** requests are closed with a reason. Requests already with a partner stay open.
+- **Partner email:** the new `loan-lead-partner` job on the `notification-email` queue sends `templates/loan-lead-partner.ejs` to the partner's contact address. The job re-checks the request first, so a withdrawn or re-assigned request is never sent.
+- **Notifications:** `LOAN_LEAD_SUBMITTED` (admins) and `LOAN_LEAD_UPDATED` (buyer), in the new `FINANCING` category (in-app and email, both optional).
+- **Sidebar badge:** `loanLeads` in `GET /dashboard/staff/queue-counts` counts NEW requests for admins (null for moderators).
+- **Audit log:** partner create/update/delete, assign and status changes.
+- **Config:** `LOAN_LEAD_MAX_OPEN`, `LOAN_MIN_DOWN_PAYMENT_PERCENT`, `LOAN_DEFAULT_INTEREST_RATE` (in `.env.example`).
+- **Migration:** `loan_leads` adds `finance_partners`, `loan_leads`, `LoanLeadStatus`, `EmploymentType`, the two notification types and the `FINANCING` category.
+- **Seed:**
+  - 3 made-up partners: Swift Wheels Finance, Green Road Credit, and Harbor Motor Loans (inactive).
+  - 2 requests for the demo buyer: one NEW, and one CONTACTED with Swift Wheels.
+- **Postman:** "Finance Partners" (6 requests) and "Loan Leads" (7 requests) folders, with the `financePartnerId` and `loanLeadId` variables.
+- **Tests:** `tests/loanLead.rules.test.ts` covers the EMI formula, terms against platform and partner limits, who can apply, status transitions, and request and partner validation.
+
 ## [0.13.0] — Phase 2 · Part 2b: saved searches and alerts (2026-11-22)
 
 ### Added

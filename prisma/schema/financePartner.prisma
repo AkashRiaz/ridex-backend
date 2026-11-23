@@ -1,0 +1,49 @@
+/**
+ * A bank or finance company that receives loan leads from admins.
+ * Rates and limits are shown publicly (EMI calculator presets);
+ * contact details are admin-only.
+ */
+model FinancePartner {
+  id String @id @default(uuid())
+
+  name String @unique
+
+  slug String @unique
+
+  description String?
+
+  logoUrl String?
+
+  logoPublicId String?
+
+  // leads are emailed here when an admin assigns them
+  contactEmail String
+
+  contactPhone String?
+
+  website String?
+
+  // yearly rate range in percent, e.g. 9.50 – 14.00
+  interestRateMin Decimal @db.Decimal(5, 2)
+
+  interestRateMax Decimal @db.Decimal(5, 2)
+
+  minDownPaymentPercent Int
+
+  maxTenureMonths Int
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // leads assigned to this partner
+  loanLeads LoanLead[] @relation("AssignedPartner")
+
+  // leads where the buyer picked this partner
+  preferredLoanLeads LoanLead[] @relation("PreferredPartner")
+
+  @@index([isActive])
+  @@map("finance_partners")
+}

@@ -1,5 +1,6 @@
 import { config } from "../config";
 import { TAppEvents, appEvents, safeHandler } from "./appEvents";
+import { registerLoanLeadHandlers } from "./loanLeadHandlers";
 import { registerNotificationHandlers } from "./notificationHandlers";
 import { registerOfferHandlers } from "./offerHandlers";
 import { registerSavedSearchHandlers } from "./savedSearchHandlers";
@@ -8,7 +9,7 @@ import { registerTestRideHandlers } from "./testRideHandlers";
 /*
  * Development log for every event, plus the notification handlers
  * (Phase 1 · Part 5), offers, test rides and saved-search alerts
- * (Phase 2). Social auto-post and analytics handlers subscribe here later.
+ * and financing requests (Phase 2). Social auto-post and analytics handlers subscribe here later.
  */
 export const registerEventHandlers = () => {
   const events: (keyof TAppEvents)[] = [
@@ -44,6 +45,10 @@ export const registerEventHandlers = () => {
     "testRide.reminder",
     "savedSearch.matched",
     "savedSearch.digest",
+    "loanLead.submitted",
+    "loanLead.withdrawn",
+    "loanLead.sentToPartner",
+    "loanLead.statusChanged",
   ];
 
   for (const event of events) {
@@ -61,4 +66,5 @@ export const registerEventHandlers = () => {
   registerOfferHandlers();
   registerTestRideHandlers();
   registerSavedSearchHandlers();
+  registerLoanLeadHandlers();
 };

@@ -20,6 +20,8 @@ import {
   INotificationEmailJob,
   IUnreadMessagesEmailJob,
 } from "../module/notification/notification.interface";
+import { ILoanLeadPartnerEmailJob } from "../module/loanLead/loanLead.interface";
+import { LoanLeadService } from "../module/loanLead/loanLead.service";
 import { NotificationService } from "../module/notification/notification.service";
 import {
   DIGEST_COOLDOWN_SECONDS,
@@ -36,6 +38,7 @@ import { sendEmail } from "../utils/sendEmail";
  * notification-email queue:
  *   "notification"     one in-app notification mirrored to email
  *   "unread-messages"  delayed chat digest (one per conversation + recipient)
+ *   "loan-lead-partner" a financing request sent to a finance partner
  * Preferences are re-read when the job runs, so a user who switched
  * email off in the meantime gets nothing.
  */
@@ -214,6 +217,12 @@ export const processNotificationEmailJob = async (job: Job) => {
 
   if (job.name === "unread-messages") {
     return processUnreadMessagesEmail(job.data as IUnreadMessagesEmailJob);
+  }
+
+  if (job.name === "loan-lead-partner") {
+    return LoanLeadService.sendLeadToPartnerEmail(
+      job.data as ILoanLeadPartnerEmailJob,
+    );
   }
 
   return `skipped: unknown job ${job.name}`;

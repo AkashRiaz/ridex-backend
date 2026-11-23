@@ -1,4 +1,6 @@
 import { EventEmitter } from "node:events";
+import { LoanLeadStatus } from "../../generated/prisma/enums";
+import { ILoanLeadRef } from "../module/loanLead/loanLead.interface";
 import { IOfferRef } from "../module/offer/offer.interface";
 import {
   ISavedSearchDigestEvent,
@@ -85,6 +87,25 @@ export type TAppEvents = {
   "savedSearch.matched": ISavedSearchMatchedEvent;
   // daily digest of matches not announced yet
   "savedSearch.digest": ISavedSearchDigestEvent;
+  // a buyer asked for financing (→ admins)
+  "loanLead.submitted": ILoanLeadRef & { fullName: string; loanAmount: number };
+  // the buyer withdrew it (→ admins)
+  "loanLead.withdrawn": ILoanLeadRef & {
+    previousStatus: LoanLeadStatus;
+    partnerName: string | null;
+  };
+  // an admin sent it (or re-sent it to another partner) (→ partner email, buyer)
+  "loanLead.sentToPartner": ILoanLeadRef & {
+    partnerId: string;
+    partnerName: string;
+    isResend: boolean;
+  };
+  // an admin or the system moved it on (→ buyer)
+  "loanLead.statusChanged": ILoanLeadRef & {
+    previousStatus: LoanLeadStatus;
+    closeReason: string | null;
+    partnerName: string | null;
+  };
 };
 
 class TypedEmitter {

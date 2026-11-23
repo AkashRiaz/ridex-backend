@@ -2,6 +2,7 @@ import { Prisma } from "../../../generated/prisma/client";
 import {
   AuditAction,
   ListingStatus,
+  LoanLeadStatus,
   ReportReason,
   ReportStatus,
   ReportTargetType,
@@ -174,7 +175,7 @@ const getAverageReviewHours = async (range: IDashboardRange) => {
 const getQueueCountsFor = async (role: Role): Promise<IQueueCounts> => {
   const canReviewVerifications = ADMIN_ROLES.includes(role);
 
-  const [listings, reports, verifications] = await Promise.all([
+  const [listings, reports, verifications, loanLeads] = await Promise.all([
     prisma.listing.count({
       where: { status: ListingStatus.PENDING, isDeleted: false },
     }),
@@ -184,9 +185,13 @@ const getQueueCountsFor = async (role: Role): Promise<IQueueCounts> => {
           where: { status: VerificationStatus.PENDING },
         })
       : Promise.resolve(null),
+    // admins only: financing requests not sent to a partner yet
+    canReviewVerifications
+      ? prisma.loanLead.count({ where: { status: LoanLeadStatus.NEW } })
+      : Promise.resolve(null),
   ]);
 
-  return { listings, reports, verifications };
+  return { listings, reports, verifications, loanLeads };
 };
 
 // ============================================

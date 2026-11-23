@@ -67,6 +67,13 @@ export const CATEGORY_DEFAULTS: Record<NotificationCategory, TCategoryDefault> =
       lockedInApp: false,
       lockedEmail: false,
     },
+    // financing request updates (buyer) and new loan leads (admins)
+    FINANCING: {
+      inApp: true,
+      email: true,
+      lockedInApp: false,
+      lockedEmail: false,
+    },
   };
 
 export const NOTIFICATION_CATEGORIES = Object.keys(
@@ -101,6 +108,8 @@ export const TYPE_CATEGORY: Record<NotificationType, NotificationCategory> = {
   TEST_RIDE_REMINDER: NotificationCategory.TEST_RIDES,
   SAVED_SEARCH_MATCH: NotificationCategory.PRICE_ALERTS,
   SAVED_SEARCH_PRICE_DROP: NotificationCategory.PRICE_ALERTS,
+  LOAN_LEAD_SUBMITTED: NotificationCategory.FINANCING,
+  LOAN_LEAD_UPDATED: NotificationCategory.FINANCING,
   SYSTEM: NotificationCategory.ACCOUNT,
 };
 

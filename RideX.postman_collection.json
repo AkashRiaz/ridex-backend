@@ -116,6 +116,14 @@
     {
       "key": "savedSearchId",
       "value": ""
+    },
+    {
+      "key": "financePartnerId",
+      "value": ""
+    },
+    {
+      "key": "loanLeadId",
+      "value": ""
     }
   ],
   "auth": {
@@ -2959,6 +2967,217 @@
             "method": "DELETE",
             "url": "{{apiUrl}}/saved-searches/{{savedSearchId}}",
             "description": "BUYER / SELLER / DEALER / DEALER_STAFF / INSPECTOR. Deletes the search and its matches."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Finance Partners",
+      "item": [
+        {
+          "name": "Active Partners (public)",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/finance-partners/active",
+            "description": "Public. Active partners with rates and limits only (no contact details), plus defaults { interestRate: LOAN_DEFAULT_INTEREST_RATE, minDownPaymentPercent: LOAN_MIN_DOWN_PAYMENT_PERCENT } for the EMI calculator.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Create Partner",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/finance-partners",
+            "description": "ADMIN / SUPER_ADMIN. multipart/form-data: data = JSON payload, logo = optional image. Rate range 0–40% (min ≤ max), minDownPaymentPercent 0–90, maxTenureMonths 6–60. 409 on duplicate name or slug. Saves the id as financePartnerId.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "data",
+                  "type": "text",
+                  "value": "{\"name\": \"Demo Partner Bank\", \"contactEmail\": \"leads@demo-partner.demo\", \"contactPhone\": \"+8801700000101\", \"interestRateMin\": 9.5, \"interestRateMax\": 13, \"minDownPaymentPercent\": 20, \"maxTenureMonths\": 36, \"isActive\": true}"
+                },
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body?.data?.id) pm.collectionVariables.set('financePartnerId', body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "All Partners",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/finance-partners?searchTerm=&isActive=&page=1&limit=20",
+            "description": "ADMIN / SUPER_ADMIN. searchTerm (name, slug, contact email), isActive=true|false, sortBy name|interestRateMin|createdAt. Each item has openLeadsCount."
+          }
+        },
+        {
+          "name": "Partner by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/finance-partners/{{financePartnerId}}",
+            "description": "ADMIN / SUPER_ADMIN. Includes contact details and openLeadsCount."
+          }
+        },
+        {
+          "name": "Update Partner",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/finance-partners/{{financePartnerId}}",
+            "description": "ADMIN / SUPER_ADMIN. multipart/form-data like create; every field optional. A one-sided rate change is checked against the stored other side (400).",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "data",
+                  "type": "text",
+                  "value": "{\"interestRateMax\": 14, \"isActive\": true}"
+                },
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Partner",
+          "request": {
+            "method": "DELETE",
+            "url": "{{apiUrl}}/finance-partners/{{financePartnerId}}",
+            "description": "ADMIN / SUPER_ADMIN. 409 when any loan lead refers to the partner (deactivate it instead)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Loan Leads",
+      "item": [
+        {
+          "name": "Request Financing",
+          "request": {
+            "method": "POST",
+            "url": "{{apiUrl}}/loan-leads",
+            "description": "BUYER / SELLER / DEALER / DEALER_STAFF / INSPECTOR (not the listing's seller). Live listings only. Down payment ≥ LOAN_MIN_DOWN_PAYMENT_PERCENT of the price and < price; tenure 6–60 months; rate 0–40%. preferredPartnerId is optional: its own minimum down payment, maximum tenure and rate range apply. consent must be true. One open request per listing (409) and at most LOAN_LEAD_MAX_OPEN open requests (409). The server takes the price from the listing and computes loanAmount and estimatedEmi. Notifies admins. Saves the id as loanLeadId.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"preferredPartnerId\": \"{{financePartnerId}}\",\n  \"downPayment\": 75000,\n  \"tenureMonths\": 24,\n  \"interestRate\": 12,\n  \"fullName\": \"Demo Buyer\",\n  \"phone\": \"01712345678\",\n  \"email\": \"buyer@ridex.demo\",\n  \"district\": \"Dhaka\",\n  \"monthlyIncome\": 60000,\n  \"employmentType\": \"SALARIED\",\n  \"note\": \"Best time to call is after 6 pm.\",\n  \"consent\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body?.data?.id) pm.collectionVariables.set('loanLeadId', body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Financing Requests",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/loan-leads/my?status=&listingId=&page=1&limit=10",
+            "description": "LOAN_LEAD roles. status = a LoanLeadStatus, OPEN (new, sent, contacted, approved) or CLOSED_ALL. listingId shows whether this listing already has a request. adminNote and partner contact details are never included."
+          }
+        },
+        {
+          "name": "Loan Leads (admin)",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/loan-leads?status=OPEN&searchTerm=&partnerId=&listingId=&fromDate=&toDate=&page=1&limit=20",
+            "description": "ADMIN / SUPER_ADMIN. searchTerm (applicant name, phone, email, listing title), status (LoanLeadStatus | OPEN | CLOSED_ALL), partnerId (uuid or none), fromDate/toDate (YYYY-MM-DD, created), sortBy createdAt|loanAmount|listingPrice. meta.statusCounts has the whole queue per status."
+          }
+        },
+        {
+          "name": "Loan Lead by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{apiUrl}}/loan-leads/{{loanLeadId}}",
+            "description": "The buyer's own request (404 otherwise), or any request for ADMIN / SUPER_ADMIN (adds buyer, adminNote, partnerContact)."
+          }
+        },
+        {
+          "name": "Assign to Partner",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/loan-leads/{{loanLeadId}}/assign",
+            "description": "ADMIN / SUPER_ADMIN. NEW or SENT_TO_PARTNER (re-send to another partner) → SENT_TO_PARTNER. The partner must be active. Queues an email with the lead to the partner's contactEmail (the buyer gave consent) and notifies the buyer.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partnerId\": \"{{financePartnerId}}\",\n  \"note\": \"Salaried, stable income.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Status",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/loan-leads/{{loanLeadId}}/status",
+            "description": "ADMIN / SUPER_ADMIN. SENT_TO_PARTNER → CONTACTED | APPROVED | REJECTED | CLOSED; CONTACTED → APPROVED | REJECTED | CLOSED; APPROVED → DISBURSED | REJECTED | CLOSED; NEW → CLOSED. Final statuses never change (409). REJECTED and CLOSED need a note, shown to the buyer as closeReason. partnerReference = the partner's application number. Notifies the buyer.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CONTACTED\",\n  \"partnerReference\": \"SWF-2026-0412\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Withdraw Request",
+          "request": {
+            "method": "PATCH",
+            "url": "{{apiUrl}}/loan-leads/{{loanLeadId}}/withdraw",
+            "description": "The buyer, while the request is NEW or SENT_TO_PARTNER. Notifies admins.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"I bought another bike.\"\n}"
+            }
           }
         }
       ]
